@@ -8,6 +8,7 @@ import { QueueModule } from './infra/queue/queue.module';
 import { StorageModule } from './infra/storage/storage.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -24,8 +25,9 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     StorageModule,
     HealthModule,
     AuthModule,
-    // Domain modules slot here in Phase 2+ subtasks:
-    // UsersModule, PostsModule, TimelineModule, EngagementModule,
+    UsersModule,
+    // Domain modules slot here in Phase 3+ subtasks:
+    // PostsModule, TimelineModule, EngagementModule,
     // MediaModule, MessagingModule, NotificationsModule, SearchModule,
     // HashtagsModule, RealtimeModule
   ],

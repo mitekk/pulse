@@ -41,20 +41,20 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| GET | `/api/v1/users/:handle` | Optional | — | `{ user: ProfileDto }` | planned |
-| PATCH | `/api/v1/users/me` | Yes | `{ displayName?: string, bio?: string, location?: string, website?: string, avatarMediaId?: string, bannerMediaId?: string, isPrivate?: boolean, dmPrivacy?: 'everyone'|'following' }` | `{ user: ProfileDto }` | planned |
+| GET | `/api/v1/users/:handle` | Optional | — | `{ user: ProfileDto }` | implemented |
+| PATCH | `/api/v1/users/me` | Yes | `{ displayName?: string, bio?: string, location?: string, website?: string, avatarMediaId?: string, bannerMediaId?: string, isPrivate?: boolean, dmPrivacy?: 'everyone'|'following' }` | `{ user: ProfileDto }` | implemented |
 | GET | `/api/v1/users/:handle/posts` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
 | GET | `/api/v1/users/:handle/replies` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
 | GET | `/api/v1/users/:handle/media` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
 | GET | `/api/v1/users/:handle/likes` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` (privacy-gated: 403 if not allowed) | planned |
-| GET | `/api/v1/users/:handle/followers` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/users/:handle/following` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | planned |
-| POST | `/api/v1/users/:handle/follow` | Yes | — | `{ state: 'active'|'pending' }` 201 | planned |
-| DELETE | `/api/v1/users/:handle/follow` | Yes | — | 204 No Content | planned |
-| POST | `/api/v1/users/:handle/block` | Yes | — | 201 `{ blocked: true }` | planned |
-| DELETE | `/api/v1/users/:handle/block` | Yes | — | 204 No Content | planned |
-| POST | `/api/v1/users/:handle/mute` | Yes | — | 201 `{ muted: true }` | planned |
-| DELETE | `/api/v1/users/:handle/mute` | Yes | — | 204 No Content | planned |
+| GET | `/api/v1/users/:handle/followers` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | implemented |
+| GET | `/api/v1/users/:handle/following` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | implemented |
+| POST | `/api/v1/users/:handle/follow` | Yes | — | `{ state: 'active'|'pending' }` 201 | implemented |
+| DELETE | `/api/v1/users/:handle/follow` | Yes | — | 204 No Content | implemented |
+| POST | `/api/v1/users/:handle/block` | Yes | — | 201 `{ blocked: true }` | implemented |
+| DELETE | `/api/v1/users/:handle/block` | Yes | — | 204 No Content | implemented |
+| POST | `/api/v1/users/:handle/mute` | Yes | — | 201 `{ muted: true }` | implemented |
+| DELETE | `/api/v1/users/:handle/mute` | Yes | — | 204 No Content | implemented |
 
 ---
 
@@ -62,9 +62,9 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| GET | `/api/v1/follow-requests` | Yes | `?cursor=&limit=` | `{ items: FollowRequestDto[], cursor: string, hasMore: boolean }` | planned |
-| POST | `/api/v1/follow-requests/:id/accept` | Yes | — | 200 `{ state: 'active' }` | planned |
-| POST | `/api/v1/follow-requests/:id/decline` | Yes | — | 200 `{ state: 'declined' }` | planned |
+| GET | `/api/v1/follow-requests` | Yes | `?cursor=&limit=` | `{ items: FollowRequestDto[], cursor: string, hasMore: boolean }` | implemented |
+| POST | `/api/v1/follow-requests/:id/accept` | Yes | — | 200 `{ state: 'active' }` | implemented |
+| POST | `/api/v1/follow-requests/:id/decline` | Yes | — | 200 `{ state: 'declined' }` | implemented |
 
 **FollowRequestDto:**
 ```
