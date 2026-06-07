@@ -12,6 +12,7 @@ import { useCurrentUser } from '@/lib/auth/useCurrentUser'
 import { useThemeStore } from '@/lib/theme'
 import { authApi } from '@/lib/api/auth'
 import { useAuthStore } from '@/lib/auth/store'
+import { useRealtimeSetup } from '@/lib/realtime/useRealtimeSetup'
 
 // ── Icon components ────────────────────────────────────────
 function HomeIcon({ filled }: { filled?: boolean }) {
@@ -720,6 +721,9 @@ function RightSidebar() {
 
 // ── AppShell ───────────────────────────────────────────────
 export function AppShell() {
+  // Wire real-time socket lifecycle (auth-gated, runs once per session)
+  useRealtimeSetup()
+
   return (
     <>
       {/* Desktop & tablet layout */}
