@@ -16,6 +16,9 @@ import { MediaModule } from './modules/media/media.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { SearchModule } from './modules/search/search.module';
+import { HashtagsModule } from './modules/hashtags/hashtags.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { REALTIME_PUBLISHER_PORT } from './modules/timeline/realtime-publisher.port';
@@ -23,9 +26,11 @@ import { RealtimePublisherService } from './modules/realtime/realtime-publisher.
 import { NOTIFICATION_PORT } from './modules/users/notification.port';
 import { POSTS_NOTIFICATION_PORT } from './modules/posts/posts-notification.port';
 import { DM_NOTIFICATION_PORT } from './modules/messaging/dm-notification.port';
+import { TRENDS_INCREMENT_PORT } from './modules/posts/trends-increment.port';
 import { RealNotificationService } from './modules/notifications/real-notification.service';
 import { RealPostsNotificationService } from './modules/notifications/real-posts-notification.service';
 import { RealDmNotificationService } from './modules/notifications/real-dm-notification.service';
+import { TrendsService } from './modules/hashtags/trends.service';
 
 @Module({
   imports: [
@@ -48,6 +53,9 @@ import { RealDmNotificationService } from './modules/notifications/real-dm-notif
     MessagingModule,
     RealtimeModule,
     NotificationsModule,
+    HashtagsModule,
+    SearchModule,
+    ReportsModule,
   ],
   providers: [
     {
@@ -77,6 +85,11 @@ import { RealDmNotificationService } from './modules/notifications/real-dm-notif
     {
       provide: DM_NOTIFICATION_PORT,
       useExisting: RealDmNotificationService,
+    },
+    // Override noop TrendsIncrementService with real TrendsService from HashtagsModule.
+    {
+      provide: TRENDS_INCREMENT_PORT,
+      useExisting: TrendsService,
     },
   ],
 })

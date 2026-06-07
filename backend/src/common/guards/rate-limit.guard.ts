@@ -59,11 +59,27 @@ export class RateLimitGuard implements CanActivate {
 
     if (current > config.max) {
       this.logger.warn(`Rate limit exceeded [key=${key}] [count=${current}] [max=${config.max}]`);
+
+      // Get remaining TTL so we can return Retry-After
+      const ttl = await redis.ttl(key);
+      const retryAfter = ttl > 0 ? ttl : config.windowSecs;
+
+      // Attach Retry-After header to the response
+      const response = context.switchToHttp().getResponse<{
+        header?: (name: string, value: string) => void;
+        setHeader?: (name: string, value: string) => void;
+      }>();
+      const setHeader = response.header ?? response.setHeader;
+      if (setHeader) {
+        setHeader.call(response, 'Retry-After', String(retryAfter));
+      }
+
       throw new HttpException(
         {
           error: {
             code: 'RATE_LIMIT_EXCEEDED',
             message: `Rate limit exceeded. Maximum ${config.max} requests per ${config.windowSecs} seconds.`,
+            details: [{ field: 'retryAfter', message: `Retry after ${retryAfter} seconds` }],
           },
         },
         HttpStatus.TOO_MANY_REQUESTS,

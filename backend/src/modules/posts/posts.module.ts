@@ -14,6 +14,8 @@ import { NoopViewerFlagsService } from './noop-viewer-flags.service';
 import { VIEWER_FLAGS_PORT } from './viewer-flags.port';
 import { NoopMediaAttachService } from './noop-media-attach.service';
 import { MEDIA_ATTACH_PORT } from './media-attach.port';
+import { NoopTrendsIncrementService } from './noop-trends-increment.service';
+import { TRENDS_INCREMENT_PORT } from './trends-increment.port';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
 
@@ -60,6 +62,10 @@ import { AuthModule } from '../auth/auth.module';
       provide: MEDIA_ATTACH_PORT,
       useClass: NoopMediaAttachService,
     },
+    {
+      provide: TRENDS_INCREMENT_PORT,
+      useClass: NoopTrendsIncrementService,
+    },
   ],
   exports: [
     PostsService,
@@ -67,6 +73,7 @@ import { AuthModule } from '../auth/auth.module';
     TypeOrmModule, // export entities for EngagementModule, TimelineModule, etc.
     VIEWER_FLAGS_PORT, // exported so EngagementModule can override in consuming modules
     MEDIA_ATTACH_PORT, // exported so MediaModule can override in global scope
+    TRENDS_INCREMENT_PORT, // exported so AppModule can override with TrendsService
   ],
 })
 export class PostsModule {}

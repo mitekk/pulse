@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { User } from '../users/user.entity';
@@ -6,6 +6,7 @@ import { Hashtag } from './hashtag.entity';
 import { Mention } from './mention.entity';
 import { PostHashtag } from './post-hashtag.entity';
 import { SnowflakeUtil } from '../../common/utils/snowflake.util';
+import { TRENDS_INCREMENT_PORT, TrendsIncrementPort } from './trends-increment.port';
 
 // ── Public DTO shapes (returned by extractAndPersist) ────────────────────────
 
@@ -70,6 +71,8 @@ export class EntityExtractorService {
     @InjectRepository(PostHashtag)
     private readonly postHashtagRepo: Repository<PostHashtag>,
     private readonly dataSource: DataSource,
+    @Inject(TRENDS_INCREMENT_PORT)
+    private readonly trendsIncrement: TrendsIncrementPort,
   ) {}
 
   /**
@@ -176,6 +179,14 @@ export class EntityExtractorService {
       for (const raw of rawHashtags) {
         hashtagEntities.push({ tag: raw.tag.toLowerCase(), start: raw.start, end: raw.end });
       }
+
+      // ── Increment trending counters (fire-and-forget; non-blocking) ──────
+      // TrendsIncrementPort is a no-op in tests / when HashtagsModule is absent.
+      // In production, AppModule overrides with TrendsService.incrementTags().
+      const tagsToIncrement = [...new Set(rawHashtags.map((h) => h.tag.toLowerCase()))];
+      void this.trendsIncrement.incrementTags(tagsToIncrement).catch(() => {
+        // Trending counters are best-effort; never fail the post-create transaction
+      });
     }
 
     // ── Dedup URL entities (same URL at multiple positions) ───────────────

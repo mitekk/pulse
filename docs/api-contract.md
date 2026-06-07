@@ -157,9 +157,9 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| GET | `/api/v1/search` | Optional | `?q=string&type=top|latest|people|media&cursor=&limit=` | `{ items: (PostDto|UserCardDto)[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/search/suggest` | Optional | `?q=string` | `{ users: UserCardDto[], tags: TagDto[] }` | planned |
-| GET | `/api/v1/trends` | Optional | — | `{ trends: TrendDto[] }` | planned |
+| GET | `/api/v1/search` | Optional | `?q=string&type=top|latest|people|media&cursor=&limit=` | `{ items: (PostDto|UserCardDto)[], cursor: string, hasMore: boolean }` | implemented |
+| GET | `/api/v1/search/suggest` | Optional | `?q=string` | `{ users: UserCardDto[], tags: TagDto[] }` | implemented |
+| GET | `/api/v1/trends` | Optional | — | `{ trends: TrendDto[] }` | implemented |
 
 **TagDto:** `{ tag: string, postCount: number }`
 **TrendDto:** `{ tag: string, postCount: number, postsInWindow: number }`
@@ -170,7 +170,7 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| POST | `/api/v1/reports` | Yes | `{ targetType: 'post'|'user', targetId: string, reason: 'spam'|'harassment'|'hate_speech'|'misinformation'|'other', description?: string }` | `{ report: ReportDto }` 201 | planned |
+| POST | `/api/v1/reports` | Yes | `{ targetType: 'post'|'user', targetId: string, reason: 'spam'|'harassment'|'hate_speech'|'misinformation'|'other', description?: string }` | `{ report: ReportDto }` 201 | implemented |
 
 ---
 
@@ -178,7 +178,7 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| GET | `/health` | No | — | `{ status: "ok", db: "ok"|"error", redis: "ok"|"error" }` | planned |
+| GET | `/health` | No | — | `{ status: "ok", db: "ok"|"error", redis: "ok"|"error" }` | implemented |
 
 ---
 

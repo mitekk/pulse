@@ -41,12 +41,17 @@ function buildExtractor(userRows: { id: string; handle: string }[] = []) {
     createQueryBuilder: vi.fn().mockReturnValue(insertBuilder),
   };
 
+  const trendsIncrementMock = {
+    incrementTags: vi.fn().mockResolvedValue(undefined),
+  };
+
   const svc = new EntityExtractorService(
     userRepo as never,
     hashtagRepo as never,
     mentionRepo as never,
     postHashtagRepo as never,
     dataSource as never,
+    trendsIncrementMock as never,
   );
 
   return { svc, userRepo, hashtagRepo, dataSource, insertBuilder };
