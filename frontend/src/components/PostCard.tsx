@@ -137,7 +137,7 @@ function QuoteCard({ post }: { post: PostDto }) {
       )}
 
       {/* First image preview */}
-      {post.media.length > 0 && post.media[0].variants.thumb && (
+      {(post.media?.length ?? 0) > 0 && post.media[0].variants.thumb && (
         <img
           src={post.media[0].variants.thumb}
           alt={post.media[0].altText ?? ''}
@@ -397,7 +397,7 @@ export function PostCard({ post, noNavigate = false, embedded = false }: PostCar
           )}
 
           {/* Media */}
-          {post.media.length > 0 && (
+          {(post.media?.length ?? 0) > 0 && (
             <MediaGrid
               media={post.media}
               postId={post.id}

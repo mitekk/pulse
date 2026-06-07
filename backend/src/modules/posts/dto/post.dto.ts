@@ -34,6 +34,9 @@ export interface ShallowPostDto {
   text: string | null;
   createdAt: string;
   entities: ExtractedEntities;
+  // media is included so PostCard can safely access post.media without crashing
+  // when rendering a repost/quote card that embeds a ShallowPostDto.
+  media: PostMediaDto[];
   counts: PostCountsDto;
   replyToId: string | null;
   replyPolicy: ReplyPolicy;

@@ -44,6 +44,11 @@ test.describe('Follow — A follows B, feed fan-out', () => {
     const page = sharedPage
     const profilePage = new ProfilePage(page)
     await profilePage.goto(followB.handle)
+    // Wait for network idle to ensure the bootstrap /auth/refresh completes before
+    // we inspect the follow-state button. Without this, the profile element may
+    // appear before auth initialisation finishes, causing the followingButton check
+    // to see an unauthenticated view ("Follow") even when followA is following followB.
+    await page.waitForLoadState('networkidle', { timeout: 15_000 })
     await expect(profilePage.profilePage(followB.handle)).toBeVisible({ timeout: 8_000 })
 
     // Check if currently following (text content = "Following")
@@ -54,6 +59,8 @@ test.describe('Follow — A follows B, feed fan-out', () => {
     }
 
     await page.goto('/')
+    // Wait for the home page bootstrap to complete before starting the test
+    await page.waitForLoadState('networkidle', { timeout: 15_000 })
   })
 
   test("following user B increments followers count on B's profile", async () => {
@@ -84,6 +91,7 @@ test.describe('Follow — A follows B, feed fan-out', () => {
 
     // Reload and verify persistence
     await profilePage.goto(followB.handle)
+    await page.waitForLoadState('networkidle', { timeout: 15_000 })
     await expect(profilePage.profilePage(followB.handle)).toBeVisible({ timeout: 8_000 })
     await expect(profilePage.followingButton()).toBeVisible({ timeout: 5_000 })
   })
@@ -93,6 +101,7 @@ test.describe('Follow — A follows B, feed fan-out', () => {
     const { followB } = getCreds()
     const profilePage = new ProfilePage(page)
     await profilePage.goto(followB.handle)
+    await page.waitForLoadState('networkidle', { timeout: 15_000 })
     await expect(profilePage.profilePage(followB.handle)).toBeVisible({ timeout: 8_000 })
 
     // Follow first
@@ -111,6 +120,7 @@ test.describe('Follow — A follows B, feed fan-out', () => {
     const { followB } = getCreds()
     const profilePage = new ProfilePage(page)
     await profilePage.goto(followB.handle)
+    await page.waitForLoadState('networkidle', { timeout: 15_000 })
     await expect(profilePage.profilePage(followB.handle)).toBeVisible({ timeout: 8_000 })
 
     // Follow B

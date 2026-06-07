@@ -142,8 +142,12 @@ export async function request<T>(
     } catch (err) {
       rejectQueue(err)
       tokenStore.logout()
-      const returnTo = encodeURIComponent(window.location.pathname + window.location.search)
-      window.location.href = `/login?returnTo=${returnTo}`
+      // Avoid encoding an already-login URL into returnTo — that would create an
+      // exponentially growing returnTo=%2Flogin%3FreturnTo%3D... chain, ultimately
+      // producing a 414 Request-URI Too Large nginx error.
+      const currentPath = window.location.pathname + window.location.search
+      const returnTo = currentPath.startsWith('/login') ? '' : encodeURIComponent(currentPath)
+      window.location.href = returnTo ? `/login?returnTo=${returnTo}` : '/login'
       throw err
     } finally {
       isRefreshing = false

@@ -112,6 +112,10 @@ function toShallowDto(post: Post, entities: ExtractedEntities): ShallowPostDto {
     text: post.deletedAt ? null : post.text,
     createdAt: post.createdAt.toISOString(),
     entities,
+    // media is included so PostCard can safely access post.media when rendering
+    // embedded repost/quote cards. Backend media attachment is a Phase 2 feature;
+    // for now always empty.
+    media: [],
     counts: {
       replies: post.replyCount,
       reposts: post.repostCount,

@@ -86,6 +86,11 @@ function toShallowDto(post: Post, entities: ExtractedEntities): ShallowPostDto {
     text: post.deletedAt ? null : post.text,
     createdAt: post.createdAt.toISOString(),
     entities,
+    // ShallowPostDto is embedded in PostDto.repostOf / PostDto.quoteOf. The
+    // frontend PostCard renders it recursively and accesses post.media — include
+    // an empty array so the guard (post.media?.length) does not crash when
+    // media is absent from this shallow shape.
+    media: [],
     counts: {
       replies: post.replyCount,
       reposts: post.repostCount,
