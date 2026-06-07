@@ -16,8 +16,7 @@ import { resolve } from 'path';
         synchronize: false,
         migrationsRun: false,
         logging: config.get<string>('NODE_ENV') !== 'production',
-        ssl:
-          config.get<string>('DATABASE_SSL') === 'true' ? { rejectUnauthorized: false } : false,
+        ssl: config.get<string>('DATABASE_SSL') === 'true' ? { rejectUnauthorized: false } : false,
       }),
     }),
   ],

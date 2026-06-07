@@ -239,7 +239,6 @@ export class PostsService {
 
     // ── Transactional write ───────────────────────────────────────────────
     let savedPost!: Post;
-    let entities!: ExtractedEntities;
 
     await this.dataSource.transaction(async (manager) => {
       const post = manager.create(Post, {
@@ -287,7 +286,7 @@ export class PostsService {
     // ── Extract and persist entities (outside transaction — post must be committed first) ──
     // extractAndPersist uses a separate connection (dataSource.createQueryBuilder), so
     // the post FK must be committed before mentions/hashtags can be inserted.
-    entities = await this.entityExtractor.extractAndPersist(id, text ?? null);
+    const entities = await this.entityExtractor.extractAndPersist(id, text ?? null);
 
     // ── Notifications (outside transaction, best-effort) ──────────────────
     if (parentPost && parentPost.authorId !== authorId) {
@@ -635,10 +634,7 @@ export class PostsService {
 
     // Add CASE expression as a select alias then order by the alias to avoid
     // TypeORM metadata resolution bug with raw expressions in orderBy().
-    qb.addSelect(
-        `CASE WHEN p.author_id = :authorId THEN 0 ELSE 1 END`,
-        'author_priority',
-      )
+    qb.addSelect(`CASE WHEN p.author_id = :authorId THEN 0 ELSE 1 END`, 'author_priority')
       .orderBy('author_priority', 'ASC')
       .addOrderBy('p.likeCount', 'DESC')
       .addOrderBy('p.id', 'ASC')
