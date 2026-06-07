@@ -22,6 +22,7 @@ export default defineConfig([
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-console': ['error', { allow: ['warn', 'error'] }],
       // react-refresh: allow inline disable comments for router files
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true, checkJS: false }],
