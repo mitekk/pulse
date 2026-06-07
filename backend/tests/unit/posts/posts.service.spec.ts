@@ -139,6 +139,24 @@ function buildService() {
     hydrateOne: vi.fn().mockResolvedValue({ liked: false, reposted: false, bookmarked: false }),
   };
 
+  const mediaAttachPort = {
+    // Return one stub item per ID so "no text with media" tests pass
+    validateAndLoad: vi.fn().mockImplementation((ids: string[]) =>
+      Promise.resolve(
+        ids.map((id) => ({
+          id,
+          type: 'image' as const,
+          mime: 'image/jpeg',
+          width: 100,
+          height: 100,
+          durationMs: null,
+          altText: null,
+          variants: { thumb: 'http://t', small: 'http://s' },
+        })),
+      ),
+    ),
+  };
+
   const svc = new PostsService(
     postRepo as never,
     userRepo as never,
@@ -150,6 +168,7 @@ function buildService() {
     entityExtractor as never,
     notificationPort as never,
     viewerFlagsPort as never,
+    mediaAttachPort as never,
     fanoutQueue as never,
     searchQueue as never,
   );

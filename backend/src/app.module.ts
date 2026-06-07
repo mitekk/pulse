@@ -12,6 +12,7 @@ import { UsersModule } from './modules/users/users.module';
 import { PostsModule } from './modules/posts/posts.module';
 import { EngagementModule } from './modules/engagement/engagement.module';
 import { TimelineModule } from './modules/timeline/timeline.module';
+import { MediaModule } from './modules/media/media.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -32,8 +33,9 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     PostsModule,
     EngagementModule,
     TimelineModule,
+    MediaModule,
     // Domain modules slot here in Phase 5+ subtasks:
-    // MediaModule, MessagingModule, NotificationsModule,
+    // MessagingModule, NotificationsModule,
     // SearchModule, HashtagsModule, RealtimeModule
   ],
   providers: [

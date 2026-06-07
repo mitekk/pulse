@@ -108,10 +108,10 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| POST | `/api/v1/media/upload-url` | Yes | `{ type: 'image'|'gif'|'video', mime: string, size: number }` | `{ mediaId: string, uploadUrl: string }` 201 | planned |
-| POST | `/api/v1/media/:id/finalize` | Yes | — | `{ media: MediaDto }` 200 | planned |
-| GET | `/api/v1/media/:id` | Yes | — | `{ media: MediaDto }` | planned |
-| PATCH | `/api/v1/media/:id` | Yes | `{ altText: string }` | `{ media: MediaDto }` | planned |
+| POST | `/api/v1/media/upload-url` | Yes | `{ type: 'image'|'gif'|'video', mime: string, size: number }` | `{ mediaId: string, uploadUrl: string }` 201 | implemented |
+| POST | `/api/v1/media/:id/finalize` | Yes | — | `{ media: MediaDto }` 200 | implemented |
+| GET | `/api/v1/media/:id` | Yes | — | `{ media: MediaDto }` | implemented |
+| PATCH | `/api/v1/media/:id` | Yes | `{ altText: string }` | `{ media: MediaDto }` | implemented |
 
 **MediaDto:**
 ```

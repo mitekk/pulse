@@ -19,6 +19,7 @@ import { VisibilityService } from '../users/visibility.service';
 import { EntityExtractorService, ExtractedEntities } from './entity-extractor.service';
 import { POSTS_NOTIFICATION_PORT, PostsNotificationPort } from './posts-notification.port';
 import { VIEWER_FLAGS_PORT, ViewerFlagsPort } from './viewer-flags.port';
+import { MEDIA_ATTACH_PORT, MediaAttachPort } from './media-attach.port';
 import { SnowflakeUtil } from '../../common/utils/snowflake.util';
 import { CursorUtil } from '../../common/utils/cursor.util';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -27,6 +28,7 @@ import {
   PostDto,
   PostCountsDto,
   PostViewerDto,
+  PostMediaDto,
   ShallowPostDto,
 } from './dto/post.dto';
 import type { UserCardDto } from '../users/dto/user-card.dto';
@@ -75,6 +77,7 @@ function toPostDto(
   quoteOf: ShallowPostDto | null = null,
   repostOf: ShallowPostDto | null = null,
   repostedBy: { handle: string; displayName: string } | null = null,
+  media: PostMediaDto[] = [],
 ): PostDto {
   const counts: PostCountsDto = {
     replies: post.replyCount,
@@ -89,7 +92,7 @@ function toPostDto(
     text: post.deletedAt ? null : post.text,
     createdAt: post.createdAt.toISOString(),
     entities: post.deletedAt ? { mentions: [], hashtags: [], urls: [] } : entities,
-    media: [], // populated in Phase 6
+    media,
     counts,
     viewer,
     replyToId: post.replyToId,
@@ -144,6 +147,8 @@ export class PostsService {
     private readonly notificationPort: PostsNotificationPort,
     @Inject(VIEWER_FLAGS_PORT)
     private readonly viewerFlagsPort: ViewerFlagsPort,
+    @Inject(MEDIA_ATTACH_PORT)
+    private readonly mediaAttachPort: MediaAttachPort,
     @InjectQueue('fanout')
     private readonly fanoutQueue: Queue,
     @InjectQueue('search')
@@ -155,10 +160,14 @@ export class PostsService {
   async create(authorId: string, dto: CreatePostDto): Promise<PostDto> {
     const { text, mediaIds = [], replyToId, quoteOfId, replyPolicy = 'everyone' } = dto;
 
+    // ── Validate + load media (before transaction — throws on violation) ──
+    const attachedMedia =
+      mediaIds.length > 0 ? await this.mediaAttachPort.validateAndLoad(mediaIds, authorId) : [];
+
     // ── Text length validation ───────────────────────────────────────────────
     // Empty text is only allowed with media OR as a pure repost (no text, no media)
     // Pure repost handled by separate repost() method — create() always needs text or media
-    if (!text && mediaIds.length === 0) {
+    if (!text && attachedMedia.length === 0) {
       throw new BadRequestException({
         error: {
           code: 'EMPTY_POST',
@@ -246,6 +255,14 @@ export class PostsService {
 
       entities = await this.entityExtractor.extractAndPersist(id, text ?? null);
 
+      // ── Insert post_media rows ────────────────────────────────────────────
+      for (let i = 0; i < attachedMedia.length; i++) {
+        await manager.query(
+          `INSERT INTO post_media (post_id, media_id, position) VALUES ($1, $2, $3)`,
+          [id, attachedMedia[i].id, i],
+        );
+      }
+
       if (replyToId) {
         await manager.query(`UPDATE posts SET reply_count = reply_count + 1 WHERE id = $1`, [
           replyToId,
@@ -302,7 +319,16 @@ export class PostsService {
       quoteOfDto = toShallowDto(quotePost, qEntities);
     }
 
-    return toPostDto(savedPost, entities, viewerDto, quoteOfDto, null, null);
+    const mediaDtos: PostMediaDto[] = attachedMedia.map((m) => ({
+      id: m.id,
+      type: m.type,
+      variants: m.variants,
+      altText: m.altText,
+      width: m.width,
+      height: m.height,
+    }));
+
+    return toPostDto(savedPost, entities, viewerDto, quoteOfDto, null, null, mediaDtos);
   }
 
   // ── repost (toggle) ────────────────────────────────────────────────────────

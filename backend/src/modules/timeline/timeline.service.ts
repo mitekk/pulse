@@ -539,8 +539,7 @@ export class TimelineService {
   /**
    * GET /api/v1/users/:handle/media
    * Posts that have at least one associated media attachment.
-   * Phase 6 adds the media join; for now filters by non-null text and no-reply
-   * (true media tab requires joining post_media, placeholder until Phase 6).
+   * Joins post_media to filter to posts with media only.
    */
   async getUserMedia(
     handle: string,
@@ -553,17 +552,17 @@ export class TimelineService {
     const afterId = cursor ? CursorUtil.decode(cursor) : null;
     const afterIdStr = afterId && afterId.type === 'id' ? afterId.id : null;
 
-    // NOTE: Phase 6 (MediaModule) adds a post_media join table.
-    // Until then, "media" posts are identified as non-reply, non-repost posts
-    // with text (placeholder). Phase 6 replaces this with:
-    //   .innerJoin('post_media', 'pm', 'pm.post_id = p.id')
+    // Join post_media to only include posts with at least one media attachment.
+    // Uses DISTINCT to avoid duplicate rows from multiple media per post.
     const qb = this.postRepo
       .createQueryBuilder('p')
+      .innerJoin('post_media', 'pm', 'pm.post_id = p.id')
       .leftJoinAndSelect('p.author', 'author')
       .where('p.author_id = :authorId', { authorId: user.id })
       .andWhere('p.deleted_at IS NULL')
       .andWhere('p.reply_to_id IS NULL')
-      .andWhere('p.repost_of_id IS NULL');
+      .andWhere('p.repost_of_id IS NULL')
+      .distinct(true);
 
     if (afterIdStr) {
       qb.andWhere('p.id < :afterId', { afterId: afterIdStr });

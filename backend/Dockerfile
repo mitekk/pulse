@@ -16,6 +16,10 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
+# Install ffmpeg (for video/GIF processing) and sharp runtime native libs
+# vips-dev is required for sharp @napi-rs/canvas bindings on Alpine
+RUN apk add --no-cache ffmpeg vips
+
 # Create a non-root user
 RUN addgroup -S app && adduser -S app -G app
 

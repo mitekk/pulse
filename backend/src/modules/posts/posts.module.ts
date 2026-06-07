@@ -12,6 +12,8 @@ import { NoopPostsNotificationService } from './noop-posts-notification.service'
 import { POSTS_NOTIFICATION_PORT } from './posts-notification.port';
 import { NoopViewerFlagsService } from './noop-viewer-flags.service';
 import { VIEWER_FLAGS_PORT } from './viewer-flags.port';
+import { NoopMediaAttachService } from './noop-media-attach.service';
+import { MEDIA_ATTACH_PORT } from './media-attach.port';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
 
@@ -54,12 +56,17 @@ import { AuthModule } from '../auth/auth.module';
       provide: VIEWER_FLAGS_PORT,
       useClass: NoopViewerFlagsService,
     },
+    {
+      provide: MEDIA_ATTACH_PORT,
+      useClass: NoopMediaAttachService,
+    },
   ],
   exports: [
     PostsService,
     EntityExtractorService,
     TypeOrmModule, // export entities for EngagementModule, TimelineModule, etc.
     VIEWER_FLAGS_PORT, // exported so EngagementModule can override in consuming modules
+    MEDIA_ATTACH_PORT, // exported so MediaModule can override in global scope
   ],
 })
 export class PostsModule {}
