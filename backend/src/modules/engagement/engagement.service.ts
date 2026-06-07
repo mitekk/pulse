@@ -70,7 +70,7 @@ export class EngagementService {
     // Notify post author (no self-notify)
     if (post.authorId !== userId) {
       void this.notificationPort
-        .notifyRepost(userId, post.authorId, postId) // reuse notifyRepost as a like notification seam
+        .notifyLike(userId, post.authorId, postId)
         .catch((e) => this.logger.warn(`notifyLike failed: ${String(e)}`));
     }
 

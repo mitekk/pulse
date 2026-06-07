@@ -7,6 +7,9 @@
 export const POSTS_NOTIFICATION_PORT = 'POSTS_NOTIFICATION_PORT';
 
 export interface PostsNotificationPort {
+  /** Notify `postAuthorId` that `actorId` liked their post `postId`. */
+  notifyLike(actorId: string, postAuthorId: string, postId: string): Promise<void>;
+
   /** Notify `parentAuthorId` that `actorId` replied to their post `postId`. */
   notifyReply(actorId: string, parentAuthorId: string, postId: string): Promise<void>;
 

@@ -5,8 +5,8 @@
  * that new posts are available on their home timeline. The actual Socket.IO
  * emission (subtask 8 / RealtimeModule) will replace the no-op implementation.
  *
- * Published to the `user:{userId}` room as `timeline.newPosts` event:
- * { count: number, previewIds: string[] }
+ * Extended in subtask 8b to include publishNotification for the notify.deliver
+ * BullMQ worker.
  */
 export const REALTIME_PUBLISHER_PORT = 'REALTIME_PUBLISHER_PORT';
 
@@ -18,4 +18,12 @@ export interface RealtimePublisherPort {
    * @param previewIds  Up to 5 leading post IDs for client-side preview
    */
   notifyNewTimelinePosts(userId: string, count: number, previewIds: string[]): Promise<void>;
+
+  /**
+   * Publish a notification to a user's personal WS room.
+   * Called by NotifyDeliverProcessor after creating a notification row.
+   * @param recipientId  Target user's UUID
+   * @param notification NotificationDto to emit as notification.new
+   */
+  publishNotification(recipientId: string, notification: unknown): Promise<void>;
 }

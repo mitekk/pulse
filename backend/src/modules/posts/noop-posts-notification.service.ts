@@ -10,6 +10,12 @@ import { PostsNotificationPort } from './posts-notification.port';
 export class NoopPostsNotificationService implements PostsNotificationPort {
   private readonly logger = new Logger(NoopPostsNotificationService.name);
 
+  async notifyLike(actorId: string, postAuthorId: string, postId: string): Promise<void> {
+    this.logger.debug(
+      `[noop] notifyLike actor=${actorId} postAuthor=${postAuthorId} post=${postId}`,
+    );
+  }
+
   async notifyReply(actorId: string, parentAuthorId: string, postId: string): Promise<void> {
     this.logger.debug(
       `[noop] notifyReply actor=${actorId} parent=${parentAuthorId} post=${postId}`,

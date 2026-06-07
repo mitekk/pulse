@@ -17,4 +17,8 @@ export class NoopRealtimePublisherService implements RealtimePublisherPort {
       `[noop] timeline.newPosts userId=${userId} count=${count} previewIds=${previewIds.join(',')}`,
     );
   }
+
+  async publishNotification(_recipientId: string, _notification: unknown): Promise<void> {
+    this.logger.debug(`[noop] publishNotification recipientId=${_recipientId}`);
+  }
 }

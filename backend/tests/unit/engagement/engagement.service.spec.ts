@@ -134,6 +134,7 @@ function buildService() {
   };
 
   const notificationPort = {
+    notifyLike: vi.fn().mockResolvedValue(undefined),
     notifyRepost: vi.fn().mockResolvedValue(undefined),
     notifyReply: vi.fn().mockResolvedValue(undefined),
     notifyMention: vi.fn().mockResolvedValue(undefined),
@@ -201,7 +202,7 @@ describe('EngagementService.like', () => {
 
     // Give notification promise time to resolve
     await Promise.resolve();
-    expect(notificationPort.notifyRepost).toHaveBeenCalledWith(
+    expect(notificationPort.notifyLike).toHaveBeenCalledWith(
       'user-1',
       'user-2',
       '1000000000000001',
@@ -216,7 +217,7 @@ describe('EngagementService.like', () => {
     await svc.like('user-1', '1000000000000001');
 
     await Promise.resolve();
-    expect(notificationPort.notifyRepost).not.toHaveBeenCalled();
+    expect(notificationPort.notifyLike).not.toHaveBeenCalled();
   });
 
   it('throws 404 when post does not exist', async () => {

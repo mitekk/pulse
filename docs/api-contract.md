@@ -147,9 +147,9 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| GET | `/api/v1/notifications` | Yes | `?cursor=&limit=` | `{ items: NotificationDto[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/notifications/unread-count` | Yes | — | `{ count: number }` | planned |
-| POST | `/api/v1/notifications/read` | Yes | `{ ids?: string[] }` (omit to mark all read) | 200 `{ updated: number }` | planned |
+| GET | `/api/v1/notifications` | Yes | `?cursor=&limit=` | `{ items: NotificationDto[], cursor: string, hasMore: boolean }` | implemented |
+| GET | `/api/v1/notifications/unread-count` | Yes | — | `{ count: number }` | implemented |
+| POST | `/api/v1/notifications/read` | Yes | `{ ids?: string[] }` (omit to mark all read) | 200 `{ updated: number }` | implemented |
 
 ---
 
