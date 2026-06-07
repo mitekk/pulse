@@ -1,15 +1,13 @@
 {
   "workflow": "scaffold",
   "schema_version": 1,
-  "status": "blocked",
-  "last_completed_step": 5,
-  "next_step": 5,
-  "updated_at": "2026-06-07T18:40:00Z",
-  "blockers": [
-    "Step 5.5 review: backend unit coverage 58.9% lines < 80% threshold in backend/vitest.config.ts; CI unit-test job (npm run test:coverage) exits non-zero so CI is red. Re-entering Step 5 (qa) to implement a COMBINED unit+integration coverage measurement that reflects true coverage, gate at 80% lines on the combined number, and backfill only genuine gaps. All other 5.5 gates passed (lint/types, 171 integration, 19/19 E2E, docker build/up --wait/health/down -v, npm audit 0 vulns)."
-  ],
+  "status": "in_progress",
+  "last_completed_step": 5.5,
+  "next_step": 5.7,
+  "updated_at": "2026-06-07T19:55:00Z",
+  "blockers": [],
   "prd_version": "v1",
   "prd_path": "docs/prd/PRD-current.md",
   "parallel_pending_steps": [],
-  "last_commit": "6c4e618"
+  "last_commit": "cceb0c2"
 }

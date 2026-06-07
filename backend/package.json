@@ -17,6 +17,8 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "DATABASE_URL=postgresql://tweeter:tweeter@localhost:5433/tweeter_test REDIS_URL=redis://localhost:6380 WEB_ORIGIN=http://localhost:5173 MINIO_ENDPOINT=localhost MINIO_ACCESS_KEY=minioadmin MINIO_SECRET_KEY=minioadmin NODE_PATH=./node_modules vitest run --config vitest.integration.config.ts",
     "test:integration:migrate": "DATABASE_URL=postgresql://tweeter:tweeter@localhost:5433/tweeter_test node scripts/reset-test-db.js && npm run test:integration",
+    "test:coverage:integration": "DATABASE_URL=postgresql://tweeter:tweeter@localhost:5433/tweeter_test REDIS_URL=redis://localhost:6380 WEB_ORIGIN=http://localhost:5173 MINIO_ENDPOINT=localhost MINIO_ACCESS_KEY=minioadmin MINIO_SECRET_KEY=minioadmin NODE_PATH=./node_modules vitest run --config vitest.integration-coverage.config.ts --coverage",
+    "test:coverage:combined": "npm run test:coverage && npm run test:coverage:integration; node scripts/merge-coverage.mjs",
     "migration:generate": "ts-node -r tsconfig-paths/register -P tsconfig.json node_modules/.bin/typeorm migration:generate -d src/infra/database/data-source.ts",
     "migration:run": "ts-node -r tsconfig-paths/register -P tsconfig.json node_modules/.bin/typeorm migration:run -d src/infra/database/data-source.ts",
     "migration:revert": "ts-node -r tsconfig-paths/register -P tsconfig.json node_modules/.bin/typeorm migration:revert -d src/infra/database/data-source.ts"

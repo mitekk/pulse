@@ -46,7 +46,7 @@ jobs:
         working-directory: frontend
         run: npm run typecheck
 
-  # ── 2. Unit tests (both packages, with coverage) ────────────────────────────
+  # ── 2. Unit tests (fast feedback, no DB required) ───────────────────────────
   unit-test:
     name: Unit Tests
     needs: lint
@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Backend unit tests
+      # Backend unit tests (no coverage threshold here — gate is on combined in integration-test)
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -63,14 +63,9 @@ jobs:
       - name: Install backend deps
         working-directory: backend
         run: npm ci
-      - name: Backend unit tests with coverage
+      - name: Backend unit tests
         working-directory: backend
-        run: npm run test:coverage
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: backend-coverage
-          path: backend/coverage/
+        run: npm run test
 
       # Frontend unit tests
       - uses: actions/setup-node@v4
@@ -143,6 +138,7 @@ jobs:
           DATABASE_URL: postgresql://tweeter:tweeter@localhost:5433/tweeter_test
         run: npm run migration:run
 
+      # Run integration tests (standalone, confirms integration suite green)
       - name: Run integration tests
         working-directory: backend
         env:
@@ -162,6 +158,29 @@ jobs:
           MINIO_ACCESS_KEY=minioadmin \
           MINIO_SECRET_KEY=minioadmin \
           npx vitest run --config vitest.integration.config.ts
+
+      # Run combined (unit + integration) coverage — this is the 80% lines gate.
+      # Running both suites together under a single v8 coverage pass ensures we measure
+      # the true covered surface: unit tests cover services/utils/guards, integration
+      # tests cover controllers/processors/adapters/gateway via the full Fastify stack.
+      - name: Backend combined coverage (unit + integration) — 80% lines gate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://tweeter:tweeter@localhost:5433/tweeter_test
+          REDIS_URL: redis://localhost:6380
+          WEB_ORIGIN: http://localhost:5173
+          MINIO_ENDPOINT: localhost
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
+          JWT_ACCESS_SECRET: ci_integration_access_secret
+          JWT_REFRESH_SECRET: ci_integration_refresh_secret
+          NODE_PATH: ./node_modules
+        run: npm run test:coverage:combined
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-combined-coverage
+          path: backend/coverage-combined/
 
   # ── 4. E2E (Playwright against dockerized prod-like stack) ──────────────────
   e2e:

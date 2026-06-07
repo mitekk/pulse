@@ -17,6 +17,8 @@ build/
 # Test / coverage artifacts
 coverage/
 **/coverage/
+coverage-*/
+**/coverage-*/
 playwright-report/
 test-results/
 blob-report/

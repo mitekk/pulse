@@ -252,10 +252,15 @@ export async function truncateAll(): Promise<void> {
   const app = await getApp();
   const ds = await getDataSource();
 
-  // Flush Redis to reset rate-limit counters and cached data between tests
+  // Flush Redis to reset rate-limit counters, BullMQ keys, and cached data between
+  // tests. Use flushall (not flushdb) so ALL Redis databases are cleared — the test
+  // Redis is dedicated, and flushdb (db 0 only) lets state survive across repeated
+  // local runs, which under the allkeys-lru/256mb cap can evict live keys mid-test
+  // and produce spurious failures (e.g. intermittent 404s on post creation). CI uses
+  // a fresh Redis per run so was unaffected; flushall makes local runs equally clean.
   const { RedisService } = await import('../../../backend/src/infra/redis/redis.service');
   const redisService = app.get(RedisService);
-  await redisService.client.flushdb();
+  await redisService.client.flushall();
 
   await ds.query(`
     TRUNCATE TABLE
