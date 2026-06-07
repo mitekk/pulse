@@ -43,10 +43,10 @@
 |--------|------|-------|--------------|---------------|--------|
 | GET | `/api/v1/users/:handle` | Optional | — | `{ user: ProfileDto }` | implemented |
 | PATCH | `/api/v1/users/me` | Yes | `{ displayName?: string, bio?: string, location?: string, website?: string, avatarMediaId?: string, bannerMediaId?: string, isPrivate?: boolean, dmPrivacy?: 'everyone'|'following' }` | `{ user: ProfileDto }` | implemented |
-| GET | `/api/v1/users/:handle/posts` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/users/:handle/replies` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/users/:handle/media` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/users/:handle/likes` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` (privacy-gated: 403 if not allowed) | planned |
+| GET | `/api/v1/users/:handle/posts` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | implemented |
+| GET | `/api/v1/users/:handle/replies` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | implemented |
+| GET | `/api/v1/users/:handle/media` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | implemented |
+| GET | `/api/v1/users/:handle/likes` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` (privacy-gated: 403 if not allowed) | implemented |
 | GET | `/api/v1/users/:handle/followers` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | implemented |
 | GET | `/api/v1/users/:handle/following` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | implemented |
 | POST | `/api/v1/users/:handle/follow` | Yes | — | `{ state: 'active'|'pending' }` 201 | implemented |
@@ -98,8 +98,8 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| GET | `/api/v1/timeline/home` | Yes | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/timeline/hashtag/:tag` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
+| GET | `/api/v1/timeline/home` | Yes | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | implemented |
+| GET | `/api/v1/timeline/hashtag/:tag` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | implemented |
 | GET | `/api/v1/bookmarks` | Yes | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | implemented |
 
 ---
