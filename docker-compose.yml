@@ -98,6 +98,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
       DATABASE_URL: ${DATABASE_URL:-postgresql://tweeter:tweeter@db:5432/tweeter}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}

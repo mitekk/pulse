@@ -60,6 +60,7 @@ Copy [.env.example](.env.example) to `.env`. Key variables:
 | Variable | Purpose | Dev default |
 |---|---|---|
 | `DATABASE_URL` | Postgres connection | `postgresql://tweeter:tweeter@db:5432/tweeter` |
+| `DATABASE_SSL` | Require TLS to Postgres (set `true` for managed providers) | `false` |
 | `REDIS_URL` | Redis connection | `redis://redis:6379` |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | token signing | `change_me_*` |
 | `JWT_ACCESS_EXPIRY` / `JWT_REFRESH_EXPIRY` | token lifetimes | `15m` / `30d` |

@@ -31,6 +31,12 @@ export class EnvironmentVariables {
   @IsOptional()
   DB_HOST: string = 'localhost';
 
+  // Enable TLS to Postgres (managed providers). Decoupled from NODE_ENV so a
+  // production build can still connect to a non-SSL local/Docker Postgres.
+  @IsString()
+  @IsOptional()
+  DATABASE_SSL: string = 'false';
+
   @IsInt()
   @Min(1)
   @Max(65535)

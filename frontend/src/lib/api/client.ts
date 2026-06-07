@@ -58,11 +58,21 @@ function rejectQueue(err: unknown): void {
   refreshQueue.length = 0
 }
 
+// Reads the JS-readable csrf_token cookie for double-submit CSRF on /auth/refresh.
+function readCsrfToken(): string | null {
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 async function attemptRefresh(): Promise<string> {
+  const csrfToken = readCsrfToken()
   const res = await fetch(`${API_BASE}/auth/refresh`, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    // No request body → do NOT set Content-Type (Fastify rejects an empty
+    // application/json body with 400). Send the CSRF double-submit header
+    // read from the JS-readable csrf_token cookie set at login/refresh.
+    headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
   })
   if (!res.ok) {
     throw new ApiError(res.status, 'REFRESH_FAILED', 'Session expired')
@@ -80,7 +90,15 @@ export async function request<T>(
   const accessToken = tokenStore?.getAccessToken()
 
   const headers = new Headers(options.headers)
-  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+  // Only declare a JSON content-type when an actual body is present. A bodyless
+  // POST (like/repost/bookmark/follow) with Content-Type: application/json is
+  // rejected by Fastify with 400 ("Body cannot be empty…").
+  if (
+    options.body !== undefined &&
+    options.body !== null &&
+    !headers.has('Content-Type') &&
+    !(options.body instanceof FormData)
+  ) {
     headers.set('Content-Type', 'application/json')
   }
   if (accessToken) {
