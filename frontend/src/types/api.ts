@@ -60,6 +60,7 @@ export interface ProfileDto {
   bannerUrl: string | null
   isVerified: boolean
   isPrivate: boolean
+  dmPrivacy?: 'everyone' | 'following'
   counts: {
     followers: number
     following: number
