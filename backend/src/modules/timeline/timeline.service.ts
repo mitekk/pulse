@@ -373,17 +373,15 @@ export class TimelineService {
   ): Promise<{ items: PostDto[]; cursor: string | null; hasMore: boolean }> {
     this.logger.debug(`Cold-start feed for user ${userId}`);
 
-    // Get all followee IDs
+    // Get all followee IDs (include self so own posts appear in home feed)
     const follows = await this.followRepo.find({
       where: { followerId: userId, state: 'active' as const },
       select: ['followeeId'],
     });
 
-    if (follows.length === 0) {
-      return { items: [], cursor: null, hasMore: false };
-    }
-
     const followeeIds = follows.map((f) => f.followeeId);
+    // Always include own posts in home feed
+    const feedAuthorIds = [...new Set([userId, ...followeeIds])];
 
     const afterId = cursor ? CursorUtil.decode(cursor) : null;
     const afterIdStr = afterId && afterId.type === 'id' ? afterId.id : null;
@@ -391,7 +389,7 @@ export class TimelineService {
     const qb = this.postRepo
       .createQueryBuilder('p')
       .leftJoinAndSelect('p.author', 'author')
-      .where('p.author_id = ANY(:ids)', { ids: followeeIds })
+      .where('p.author_id = ANY(:ids)', { ids: feedAuthorIds })
       .andWhere('p.deleted_at IS NULL')
       .andWhere('p.repost_of_id IS NULL'); // exclude pure reposts from cold-start (they're confusing without context)
 
@@ -409,11 +407,18 @@ export class TimelineService {
       suppressDeleted: true,
     });
 
-    const pageIds = filtered.map((p) => p.id);
+    // Filter out posts from muted authors (visibilityService.filterPostPage skips this)
+    const mutedAuthorIds = await this.visibilityService.getMutedIds(
+      userId,
+      filtered.map((p) => p.authorId),
+    );
+    const muteFiltered = filtered.filter((p) => !mutedAuthorIds.has(p.authorId));
+
+    const pageIds = muteFiltered.map((p) => p.id);
     const viewerFlags = await this.viewerFlagsService.hydrate(userId, pageIds);
 
     const items: PostDto[] = [];
-    for (const p of filtered) {
+    for (const p of muteFiltered) {
       const vf = viewerFlags.get(p.id) ?? { liked: false, reposted: false, bookmarked: false };
       const ent = await this.loadEntities(p.id, p.text);
       items.push(toPostDto(p, ent, vf, null, null, null));
@@ -618,7 +623,8 @@ export class TimelineService {
       qb.andWhere('l.post_id < :afterId', { afterId: afterIdStr });
     }
 
-    qb.orderBy('l.post_id', 'DESC').take(limit + 1);
+    // Use createdAt to avoid TypeORM metadata resolution bug with composite-PK columns.
+    qb.orderBy('l.createdAt', 'DESC').take(limit + 1);
 
     const likeRows = await qb.getMany();
     const hasMore = likeRows.length > limit;
@@ -681,10 +687,12 @@ export class TimelineService {
       .andWhere('p.deleted_at IS NULL');
 
     if (afterIdStr) {
-      qb.andWhere('ph.post_id < :afterId', { afterId: afterIdStr });
+      qb.andWhere('p.id < :afterId', { afterId: afterIdStr });
     }
 
-    qb.orderBy('ph.post_id', 'DESC').take(clampedLimit + 1);
+    // Use p.id instead of ph.post_id to avoid TypeORM composite-PK orderBy bug
+    // (TypeORM fails to resolve metadata for @PrimaryColumn + @ManyToOne composite columns)
+    qb.orderBy('p.id', 'DESC').take(clampedLimit + 1);
 
     const phRows = await qb.getMany();
     const hasMore = phRows.length > clampedLimit;

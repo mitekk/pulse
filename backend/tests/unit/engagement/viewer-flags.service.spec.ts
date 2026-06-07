@@ -43,10 +43,15 @@ function buildService() {
     createQueryBuilder: vi.fn(),
   };
 
+  const postRepo = {
+    createQueryBuilder: vi.fn(),
+  };
+
   const svc = new ViewerFlagsService(
     redisService as never,
     likeRepo as never,
     bookmarkRepo as never,
+    postRepo as never,
   );
 
   return {
@@ -56,6 +61,7 @@ function buildService() {
     redisService,
     likeRepo,
     bookmarkRepo,
+    postRepo,
     setPipelineResults: (results: [Error | null, number][]) => {
       pipelineResults = results;
     },
@@ -116,7 +122,7 @@ describe('ViewerFlagsService.hydrate', () => {
   });
 
   it('falls back to DB when Redis set does not exist (cache miss)', async () => {
-    const { svc, setPipelineResults, likeRepo, bookmarkRepo } = buildService();
+    const { svc, setPipelineResults, likeRepo, bookmarkRepo, postRepo } = buildService();
 
     // EXISTS returns 0 → cache miss
     setPipelineResults([
@@ -126,9 +132,10 @@ describe('ViewerFlagsService.hydrate', () => {
       [null, 0], // EXISTS liked:user-1 = 0 (miss)
     ]);
 
-    // DB returns: user liked post-1
+    // DB returns: user liked post-1; hydrateFromDb + backfillUserSets both call these repos
     likeRepo.createQueryBuilder.mockReturnValue(mockQb([{ postId: 'post-1' }]));
     bookmarkRepo.createQueryBuilder.mockReturnValue(mockQb([]));
+    postRepo.createQueryBuilder.mockReturnValue(mockQb([])); // no reposts
 
     const result = await svc.hydrate('user-1', ['post-1']);
 
@@ -136,7 +143,7 @@ describe('ViewerFlagsService.hydrate', () => {
   });
 
   it('correctly marks bookmarked from DB on cache miss', async () => {
-    const { svc, setPipelineResults, likeRepo, bookmarkRepo } = buildService();
+    const { svc, setPipelineResults, likeRepo, bookmarkRepo, postRepo } = buildService();
 
     // EXISTS returns 0 → cache miss; also triggers backfillUserSets
     setPipelineResults([
@@ -149,6 +156,7 @@ describe('ViewerFlagsService.hydrate', () => {
     likeRepo.createQueryBuilder.mockReturnValue(mockQb([])); // not liked
     // Two calls: one for hydrateFromDb, one for backfillUserSets
     bookmarkRepo.createQueryBuilder.mockReturnValue(mockQb([{ postId: 'post-1' }]));
+    postRepo.createQueryBuilder.mockReturnValue(mockQb([])); // no reposts
 
     const result = await svc.hydrate('user-1', ['post-1']);
 
@@ -156,11 +164,12 @@ describe('ViewerFlagsService.hydrate', () => {
   });
 
   it('handles Redis pipeline error gracefully by falling back to DB', async () => {
-    const { svc, redisPipeline, likeRepo, bookmarkRepo } = buildService();
+    const { svc, redisPipeline, likeRepo, bookmarkRepo, postRepo } = buildService();
 
     redisPipeline.exec.mockRejectedValue(new Error('Redis connection lost'));
     likeRepo.createQueryBuilder.mockReturnValue(mockQb([{ postId: 'post-1' }]));
     bookmarkRepo.createQueryBuilder.mockReturnValue(mockQb([]));
+    postRepo.createQueryBuilder.mockReturnValue(mockQb([])); // no reposts
 
     const result = await svc.hydrate('user-1', ['post-1']);
 

@@ -35,12 +35,12 @@ export class User {
   @Column({ type: 'varchar', length: 100, nullable: true })
   website!: string | null;
 
-  /** Nullable uuid column; FK to media.id added in Phase 6 media migration */
-  @Column({ name: 'avatar_media_id', type: 'uuid', nullable: true })
+  /** Nullable bigint column (Snowflake); FK to media.id added in Phase 6 media migration */
+  @Column({ name: 'avatar_media_id', type: 'bigint', nullable: true })
   avatarMediaId!: string | null;
 
-  /** Nullable uuid column; FK to media.id added in Phase 6 media migration */
-  @Column({ name: 'banner_media_id', type: 'uuid', nullable: true })
+  /** Nullable bigint column (Snowflake); FK to media.id added in Phase 6 media migration */
+  @Column({ name: 'banner_media_id', type: 'bigint', nullable: true })
   bannerMediaId!: string | null;
 
   @Column({ name: 'is_verified', type: 'boolean', default: false })

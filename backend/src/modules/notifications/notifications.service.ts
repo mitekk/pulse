@@ -295,7 +295,9 @@ export class NotificationsService {
         }
       }
 
-      const result = await this.dataSource.query<{ count: string }[]>(
+      // TypeORM DataSource.query() with RETURNING returns [rows, rowCount] tuple.
+      // rows is result[0], rowCount is result[1].
+      const [rows] = await this.dataSource.query<[{ id: string }[], number]>(
         `UPDATE notifications
            SET read_at = $1
          WHERE recipient_id = $2
@@ -304,10 +306,11 @@ export class NotificationsService {
          RETURNING id`,
         [now, userId, ids],
       );
-      updated = result.length;
+      updated = Array.isArray(rows) ? rows.length : 0;
     } else {
       // Mark all unread
-      const result = await this.dataSource.query<{ count: string }[]>(
+      // TypeORM DataSource.query() with RETURNING returns [rows, rowCount] tuple.
+      const [rows] = await this.dataSource.query<[{ id: string }[], number]>(
         `UPDATE notifications
            SET read_at = $1
          WHERE recipient_id = $2
@@ -315,7 +318,7 @@ export class NotificationsService {
          RETURNING id`,
         [now, userId],
       );
-      updated = result.length;
+      updated = Array.isArray(rows) ? rows.length : 0;
     }
 
     if (updated > 0) {

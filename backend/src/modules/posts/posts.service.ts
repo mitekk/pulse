@@ -20,6 +20,7 @@ import { EntityExtractorService, ExtractedEntities } from './entity-extractor.se
 import { POSTS_NOTIFICATION_PORT, PostsNotificationPort } from './posts-notification.port';
 import { VIEWER_FLAGS_PORT, ViewerFlagsPort } from './viewer-flags.port';
 import { MEDIA_ATTACH_PORT, MediaAttachPort } from './media-attach.port';
+import { RedisService } from '../../infra/redis/redis.service';
 import { SnowflakeUtil } from '../../common/utils/snowflake.util';
 import { CursorUtil } from '../../common/utils/cursor.util';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -149,6 +150,7 @@ export class PostsService {
     private readonly viewerFlagsPort: ViewerFlagsPort,
     @Inject(MEDIA_ATTACH_PORT)
     private readonly mediaAttachPort: MediaAttachPort,
+    private readonly redisService: RedisService,
     @InjectQueue('fanout')
     private readonly fanoutQueue: Queue,
     @InjectQueue('search')
@@ -253,8 +255,6 @@ export class PostsService {
       const author = await manager.findOneOrFail(User, { where: { id: authorId } });
       savedPost.author = author;
 
-      entities = await this.entityExtractor.extractAndPersist(id, text ?? null);
-
       // ── Insert post_media rows ────────────────────────────────────────────
       for (let i = 0; i < attachedMedia.length; i++) {
         await manager.query(
@@ -279,6 +279,11 @@ export class PostsService {
         authorId,
       ]);
     });
+
+    // ── Extract and persist entities (outside transaction — post must be committed first) ──
+    // extractAndPersist uses a separate connection (dataSource.createQueryBuilder), so
+    // the post FK must be committed before mentions/hashtags can be inserted.
+    entities = await this.entityExtractor.extractAndPersist(id, text ?? null);
 
     // ── Notifications (outside transaction, best-effort) ──────────────────
     if (parentPost && parentPost.authorId !== authorId) {
@@ -373,6 +378,10 @@ export class PostsService {
           authorId,
         ]);
       });
+      // Update viewer-flag Redis set
+      await this.redisService.client
+        .sadd(`reposted:${authorId}`, originalPostId)
+        .catch((e) => this.logger.warn(`repost restore sadd failed: ${String(e)}`));
       return { reposted: true, count: original.repostCount + 1 };
     }
 
@@ -409,6 +418,11 @@ export class PostsService {
         { jobId: `fanout:${id}` },
       )
       .catch((e) => this.logger.warn(`fanout repost job failed: ${String(e)}`));
+
+    // Update viewer-flag Redis set so GET /posts/:id returns reposted=true immediately
+    await this.redisService.client
+      .sadd(`reposted:${authorId}`, originalPostId)
+      .catch((e) => this.logger.warn(`repost sadd failed: ${String(e)}`));
 
     return { reposted: true, count: original.repostCount + 1 };
   }
@@ -447,6 +461,11 @@ export class PostsService {
         [authorId],
       );
     });
+
+    // Update viewer-flag Redis set
+    await this.redisService.client
+      .srem(`reposted:${authorId}`, originalPostId)
+      .catch((e) => this.logger.warn(`unrepost srem failed: ${String(e)}`));
 
     return { reposted: false, count: Math.max(original.repostCount - 1, 0) };
   }
@@ -610,8 +629,14 @@ export class PostsService {
       qb.andWhere('p.id > :afterId', { afterId: afterIdStr });
     }
 
-    qb.orderBy(`CASE WHEN p.author_id = :authorId THEN 0 ELSE 1 END`, 'ASC')
-      .addOrderBy('p.like_count', 'DESC')
+    // Add CASE expression as a select alias then order by the alias to avoid
+    // TypeORM metadata resolution bug with raw expressions in orderBy().
+    qb.addSelect(
+        `CASE WHEN p.author_id = :authorId THEN 0 ELSE 1 END`,
+        'author_priority',
+      )
+      .orderBy('author_priority', 'ASC')
+      .addOrderBy('p.likeCount', 'DESC')
       .addOrderBy('p.id', 'ASC')
       .setParameter('authorId', focused.author.id)
       .take(limit + 1);

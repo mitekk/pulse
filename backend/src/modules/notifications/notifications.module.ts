@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { Notification } from './notification.entity';
@@ -11,6 +11,7 @@ import { RealDmNotificationService } from './real-dm-notification.service';
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
 import { PostsModule } from '../posts/posts.module';
+import { REALTIME_PUBLISHER_PORT } from '../timeline/realtime-publisher.port';
 
 /**
  * NotificationsModule — notification creation, delivery, and aggregation.
@@ -30,6 +31,7 @@ import { PostsModule } from '../posts/posts.module';
  * Queue:
  *   - 'notify' queue registered here with NotifyDeliverProcessor as consumer.
  */
+@Global()
 @Module({
   imports: [
     TypeOrmModule.forFeature([Notification]),
@@ -45,6 +47,15 @@ import { PostsModule } from '../posts/posts.module';
     RealNotificationService,
     RealPostsNotificationService,
     RealDmNotificationService,
+    // Noop default for REALTIME_PUBLISHER_PORT — AppModule overrides this with
+    // the real RealtimePublisherService once RealtimeModule is loaded.
+    {
+      provide: REALTIME_PUBLISHER_PORT,
+      useValue: {
+        notifyNewTimelinePosts: async () => undefined,
+        publishNotification: async () => undefined,
+      },
+    },
   ],
   exports: [
     NotificationsService,

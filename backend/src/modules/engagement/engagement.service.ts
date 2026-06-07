@@ -200,7 +200,8 @@ export class EngagementService {
       qb.andWhere('l.user_id > :afterId', { afterId: afterIdStr });
     }
 
-    qb.orderBy('l.user_id', 'ASC').take(limit + 1);
+    // Use createdAt to avoid TypeORM metadata resolution bug with composite-PK columns.
+    qb.orderBy('l.createdAt', 'ASC').take(limit + 1);
 
     const rows = await qb.getMany();
     const hasMore = rows.length > limit;
@@ -245,7 +246,9 @@ export class EngagementService {
       qb.andWhere('b.post_id < :afterId', { afterId: afterIdStr });
     }
 
-    qb.orderBy('b.post_id', 'DESC').take(limit + 1);
+    // Order by bookmark created_at DESC (avoids TypeORM metadata resolution bug
+    // with composite-PK columns that also carry a @JoinColumn/@ManyToOne mapping).
+    qb.orderBy('b.createdAt', 'DESC').take(limit + 1);
 
     const rows = await qb.getMany();
     const hasMore = rows.length > limit;

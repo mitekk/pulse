@@ -27,10 +27,12 @@ import { NOTIFICATION_PORT } from './modules/users/notification.port';
 import { POSTS_NOTIFICATION_PORT } from './modules/posts/posts-notification.port';
 import { DM_NOTIFICATION_PORT } from './modules/messaging/dm-notification.port';
 import { TRENDS_INCREMENT_PORT } from './modules/posts/trends-increment.port';
+import { VIEWER_FLAGS_PORT } from './modules/posts/viewer-flags.port';
 import { RealNotificationService } from './modules/notifications/real-notification.service';
 import { RealPostsNotificationService } from './modules/notifications/real-posts-notification.service';
 import { RealDmNotificationService } from './modules/notifications/real-dm-notification.service';
 import { TrendsService } from './modules/hashtags/trends.service';
+import { ViewerFlagsAdapter } from './modules/engagement/viewer-flags.adapter';
 
 @Module({
   imports: [
@@ -90,6 +92,13 @@ import { TrendsService } from './modules/hashtags/trends.service';
     {
       provide: TRENDS_INCREMENT_PORT,
       useExisting: TrendsService,
+    },
+    // Override noop ViewerFlagsService from PostsModule with the real ViewerFlagsAdapter
+    // from EngagementModule. PostsModule declares a local noop provider which shadows the
+    // @Global() EngagementModule export. AppModule-level providers win over child modules.
+    {
+      provide: VIEWER_FLAGS_PORT,
+      useExisting: ViewerFlagsAdapter,
     },
   ],
 })

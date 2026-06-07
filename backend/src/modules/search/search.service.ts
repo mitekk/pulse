@@ -126,7 +126,7 @@ export class SearchService {
     return 'top';
   }
 
-  private async hydrateUsers(userIds: string[], _viewerId: string | null): Promise<UserCardDto[]> {
+  private async hydrateUsers(userIds: string[], viewerId: string | null): Promise<UserCardDto[]> {
     if (!userIds.length) return [];
 
     const rows = await this.dataSource.query<
@@ -145,12 +145,25 @@ export class SearchService {
       [userIds],
     );
 
+    // Filter out users with a block relationship (in either direction) with the viewer
+    let blockedSet = new Set<string>();
+    if (viewerId) {
+      const blockRows = await this.dataSource.query<{ other_id: string }[]>(
+        `SELECT blocker_id AS other_id FROM blocks WHERE blocked_id = $1
+         UNION
+         SELECT blocked_id AS other_id FROM blocks WHERE blocker_id = $1`,
+        [viewerId],
+      );
+      blockedSet = new Set(blockRows.map((r) => r.other_id));
+    }
+
     // Preserve ordering from search results
     const map = new Map(rows.map((r) => [r.id, r]));
     return userIds
       .map((id) => {
         const r = map.get(id);
         if (!r) return null;
+        if (blockedSet.has(r.id)) return null; // exclude blocked users
         const card: UserCardDto = {
           id: r.id,
           handle: r.handle,
@@ -167,17 +180,12 @@ export class SearchService {
   private async hydratePosts(postIds: string[], viewerId: string | null): Promise<PostDto[]> {
     if (!postIds.length) return [];
 
+    // postsService.findOne returns PostDto directly (the controller wraps it in {post}, not the service)
     const results = await Promise.all(
       postIds.map((id) => this.postsService.findOne(id, viewerId).catch(() => null)),
     );
 
-    const posts: PostDto[] = [];
-    for (const r of results) {
-      if (r && typeof r === 'object' && 'post' in r && r.post) {
-        posts.push(r.post as PostDto);
-      }
-    }
-    return posts;
+    return results.filter((r): r is PostDto => r !== null);
   }
 
   private async enrichTags(tags: string[]): Promise<Array<{ tag: string; postCount: number }>> {

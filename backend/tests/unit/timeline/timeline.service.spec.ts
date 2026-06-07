@@ -265,6 +265,7 @@ function buildService(deps: ServiceDeps = {}) {
       ),
     isMuted: vi.fn().mockResolvedValue(isMuted),
     isActiveFollower: vi.fn().mockResolvedValue(false),
+    getMutedIds: vi.fn().mockResolvedValue(new Set<string>()),
   };
 
   // ── ViewerFlagsService ──────────────────────────────────────────────────────

@@ -157,6 +157,10 @@ function buildService() {
     ),
   };
 
+  const redisSadd = vi.fn().mockResolvedValue(1);
+  const redisSrem = vi.fn().mockResolvedValue(1);
+  const redisService = { client: { sadd: redisSadd, srem: redisSrem } };
+
   const svc = new PostsService(
     postRepo as never,
     userRepo as never,
@@ -169,6 +173,7 @@ function buildService() {
     notificationPort as never,
     viewerFlagsPort as never,
     mediaAttachPort as never,
+    redisService as never,
     fanoutQueue as never,
     searchQueue as never,
   );

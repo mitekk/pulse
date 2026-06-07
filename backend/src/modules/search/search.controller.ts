@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -30,12 +30,17 @@ export class SearchController {
   @UseGuards(OptionalAuthGuard, RateLimitGuard)
   @RateLimit({ max: 60, windowSecs: 60, keyPrefix: 'search' })
   async search(
-    @Query('q') q = '',
+    @Query('q') q?: string,
     @Query('type') type?: string,
     @Query('cursor') cursor?: string,
     @Query('limit') limitStr?: string,
     @CurrentUser() viewer?: AuthUser,
   ) {
+    if (!q || q.trim() === '') {
+      throw new BadRequestException({
+        error: { code: 'MISSING_QUERY', message: 'q parameter is required' },
+      });
+    }
     const limit = limitStr ? parseInt(limitStr, 10) : undefined;
     const result = await this.searchService.search({
       q,
@@ -57,10 +62,15 @@ export class SearchController {
   @UseGuards(OptionalAuthGuard, RateLimitGuard)
   @RateLimit({ max: 120, windowSecs: 60, keyPrefix: 'search-suggest' })
   async suggest(
-    @Query('q') q = '',
+    @Query('q') q?: string,
     @Query('limit') limitStr?: string,
     @CurrentUser() viewer?: AuthUser,
   ) {
+    if (!q || q.trim() === '') {
+      throw new BadRequestException({
+        error: { code: 'MISSING_QUERY', message: 'q parameter is required' },
+      });
+    }
     const limit = limitStr ? parseInt(limitStr, 10) : undefined;
     const result = await this.searchService.suggest({
       q,

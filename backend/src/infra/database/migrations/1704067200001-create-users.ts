@@ -25,8 +25,8 @@ export class CreateUsers1704067200001 implements MigrationInterface {
         bio                 VARCHAR(160),
         location            VARCHAR(30),
         website             VARCHAR(100),
-        avatar_media_id     UUID,
-        banner_media_id     UUID,
+        avatar_media_id     BIGINT,
+        banner_media_id     BIGINT,
         is_verified         BOOLEAN       NOT NULL DEFAULT FALSE,
         is_private          BOOLEAN       NOT NULL DEFAULT FALSE,
         dm_privacy          VARCHAR(10)   NOT NULL DEFAULT 'following'

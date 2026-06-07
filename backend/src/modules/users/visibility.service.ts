@@ -182,6 +182,14 @@ export class VisibilityService {
     return mute !== null;
   }
 
+  /**
+   * Batch: returns the set of authorIds that `viewerId` is muting.
+   * Public wrapper around bulkIsMuted for use by TimelineService.
+   */
+  async getMutedIds(viewerId: string, authorIds: string[]): Promise<Set<string>> {
+    return this.bulkIsMuted(viewerId, authorIds);
+  }
+
   // ─── Private helpers ──────────────────────────────────────────────────────
 
   /** True if there is a block row in either direction between the two users. */

@@ -10,6 +10,7 @@ import { MessagingService } from './messaging.service';
 import { MessagingController } from './messaging.controller';
 import { NoopDmNotificationService } from './noop-dm-notification.service';
 import { DM_NOTIFICATION_PORT } from './dm-notification.port';
+import { REALTIME_PUBLISHER_PORT } from '../timeline/realtime-publisher.port';
 import { User } from '../users/user.entity';
 import { Follow } from '../users/follow.entity';
 import { Block } from '../users/block.entity';
@@ -44,6 +45,17 @@ import { Block } from '../users/block.entity';
     {
       provide: DM_NOTIFICATION_PORT,
       useClass: NoopDmNotificationService,
+    },
+    // Noop default for REALTIME_PUBLISHER_PORT — AppModule overrides with the real
+    // RealtimePublisherService once RealtimeModule is loaded.
+    {
+      provide: REALTIME_PUBLISHER_PORT,
+      useValue: {
+        notifyNewTimelinePosts: async () => undefined,
+        publishNotification: async () => undefined,
+        publishDmMessage: async () => undefined,
+        publishDmRead: async () => undefined,
+      },
     },
   ],
   exports: [MessagingService],

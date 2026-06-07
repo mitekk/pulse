@@ -10,12 +10,16 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
 } from '@nestjs/common';
+import { IsOptional, IsArray, IsString } from 'class-validator';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { NotificationsService } from './notifications.service';
 import type { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 
 class MarkReadDto {
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   ids?: string[];
 }
 

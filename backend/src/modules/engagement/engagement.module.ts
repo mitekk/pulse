@@ -60,7 +60,7 @@ import { AuthModule } from '../auth/auth.module';
       useClass: ViewerFlagsAdapter,
     },
   ],
-  exports: [ViewerFlagsService, EngagementService, VIEWER_FLAGS_PORT],
+  exports: [ViewerFlagsService, ViewerFlagsAdapter, EngagementService, VIEWER_FLAGS_PORT],
 })
 export class EngagementModule implements OnModuleInit {
   constructor(

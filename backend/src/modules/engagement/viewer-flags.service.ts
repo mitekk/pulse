@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { RedisService } from '../../infra/redis/redis.service';
 import { Like } from './like.entity';
 import { Bookmark } from './bookmark.entity';
+import { Post } from '../posts/post.entity';
 import { PostViewerDto } from '../posts/dto/post.dto';
 
 /**
@@ -53,6 +54,8 @@ export class ViewerFlagsService {
     private readonly likeRepo: Repository<Like>,
     @InjectRepository(Bookmark)
     private readonly bookmarkRepo: Repository<Bookmark>,
+    @InjectRepository(Post)
+    private readonly postRepo: Repository<Post>,
   ) {}
 
   /**
@@ -132,7 +135,7 @@ export class ViewerFlagsService {
   ): Promise<Map<string, PostViewerDto>> {
     if (postIds.length === 0) return result;
 
-    const [likedRows, bookmarkedRows] = await Promise.all([
+    const [likedRows, bookmarkedRows, repostedRows] = await Promise.all([
       this.likeRepo
         .createQueryBuilder('l')
         .select('l.post_id', 'postId')
@@ -149,10 +152,20 @@ export class ViewerFlagsService {
           postIds,
         })
         .getRawMany<{ postId: string }>(),
+      // Reposts: find active repost posts authored by the viewer for the given originals
+      this.postRepo
+        .createQueryBuilder('p')
+        .select('p.repost_of_id', 'postId')
+        .where(
+          'p.author_id = :userId AND p.repost_of_id = ANY(:postIds) AND p.deleted_at IS NULL',
+          { userId: viewerId, postIds },
+        )
+        .getRawMany<{ postId: string }>(),
     ]);
 
     const likedSet = new Set(likedRows.map((r) => r.postId));
     const bookmarkedSet = new Set(bookmarkedRows.map((r) => r.postId));
+    const repostedSet = new Set(repostedRows.map((r) => r.postId));
 
     for (const postId of postIds) {
       const existing = result.get(postId) ?? { liked: false, reposted: false, bookmarked: false };
@@ -160,6 +173,7 @@ export class ViewerFlagsService {
         ...existing,
         liked: likedSet.has(postId),
         bookmarked: bookmarkedSet.has(postId),
+        reposted: repostedSet.has(postId),
       });
     }
 

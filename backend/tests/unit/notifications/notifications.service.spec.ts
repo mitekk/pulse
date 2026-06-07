@@ -431,8 +431,8 @@ describe('NotificationsService', () => {
   describe('markRead', () => {
     it('marks specific notification IDs as read', async () => {
       const { service, queryFn, redisGet, redisSet } = buildService();
-      // markRead calls dataSource.query once for the UPDATE RETURNING
-      queryFn.mockResolvedValueOnce([{ id: '9000000000000001' }, { id: '9000000000000002' }]);
+      // markRead uses UPDATE ... RETURNING which returns [rows, rowCount] tuple via DataSource.query()
+      queryFn.mockResolvedValueOnce([[{ id: '9000000000000001' }, { id: '9000000000000002' }], 2]);
       redisGet.mockResolvedValueOnce('5'); // current unread count
 
       const result = await service.markRead(RECIPIENT_ID, ['9000000000000001', '9000000000000002']);
@@ -444,9 +444,8 @@ describe('NotificationsService', () => {
     it('marks ALL unread when ids is omitted', async () => {
       const { service, queryFn, redisGet, redisSet } = buildService();
       queryFn.mockResolvedValueOnce([
-        { id: '9000000000000001' },
-        { id: '9000000000000002' },
-        { id: '9000000000000003' },
+        [{ id: '9000000000000001' }, { id: '9000000000000002' }, { id: '9000000000000003' }],
+        3,
       ]);
       redisGet.mockResolvedValueOnce('3');
 
@@ -458,7 +457,7 @@ describe('NotificationsService', () => {
 
     it('does not go below 0 on Redis badge', async () => {
       const { service, queryFn, redisGet, redisSet } = buildService();
-      queryFn.mockResolvedValueOnce([{ id: '1' }, { id: '2' }, { id: '3' }, { id: '4' }]);
+      queryFn.mockResolvedValueOnce([[{ id: '1' }, { id: '2' }, { id: '3' }, { id: '4' }], 4]);
       redisGet.mockResolvedValueOnce('2'); // Redis says 2 but DB returned 4 (drift scenario)
 
       await service.markRead(RECIPIENT_ID);
@@ -469,7 +468,7 @@ describe('NotificationsService', () => {
 
     it('returns updated: 0 and does not touch Redis when nothing is read', async () => {
       const { service, queryFn, redisGet, redisSet } = buildService();
-      queryFn.mockResolvedValueOnce([]); // no rows updated
+      queryFn.mockResolvedValueOnce([[], 0]); // no rows updated — tuple with empty array
 
       await service.markRead(RECIPIENT_ID);
 
