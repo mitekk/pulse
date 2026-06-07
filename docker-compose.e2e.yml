@@ -1,0 +1,16 @@
+# E2E compose override — used by Playwright E2E tests only.
+# Overrides NODE_ENV to avoid SSL requirement on the local postgres.
+#
+# Usage (from repo root):
+#   FRONTEND_PORT=18080 \
+#   JWT_ACCESS_SECRET=... JWT_REFRESH_SECRET=... \
+#     docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --wait
+#
+# This sets NODE_ENV=test on the backend so SSL is not required for the
+# local postgres (which does not have SSL configured).
+# Set FRONTEND_PORT=18080 (or any free port) in the shell to avoid conflicts.
+services:
+  backend:
+    environment:
+      NODE_ENV: test
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:18080}

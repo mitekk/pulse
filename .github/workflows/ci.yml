@@ -1,0 +1,229 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ── 1. Lint + typecheck ─────────────────────────────────────────────────────
+  lint:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: Lint backend
+        working-directory: backend
+        run: npm run lint
+      - name: Typecheck backend
+        working-directory: backend
+        run: npm run typecheck
+
+      # Frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+      - name: Typecheck frontend
+        working-directory: frontend
+        run: npm run typecheck
+
+  # ── 2. Unit tests (both packages, with coverage) ────────────────────────────
+  unit-test:
+    name: Unit Tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Backend unit tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: Backend unit tests with coverage
+        working-directory: backend
+        run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: backend/coverage/
+
+      # Frontend unit tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Frontend unit tests with coverage
+        working-directory: frontend
+        run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+
+  # ── 3. Integration tests (Postgres + Redis via services) ────────────────────
+  integration-test:
+    name: Integration Tests
+    needs: unit-test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: tweeter
+          POSTGRES_USER: tweeter
+          POSTGRES_PASSWORD: tweeter
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5433:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports:
+          - 6380:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+
+      # Create the test DB and apply migrations
+      - name: Create test database
+        run: psql postgresql://tweeter:tweeter@localhost:5433/tweeter -c "CREATE DATABASE tweeter_test;"
+
+      - name: Run migrations on test DB
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://tweeter:tweeter@localhost:5433/tweeter_test
+        run: npm run migration:run
+
+      - name: Run integration tests
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://tweeter:tweeter@localhost:5433/tweeter_test
+          REDIS_URL: redis://localhost:6380
+          WEB_ORIGIN: http://localhost:5173
+          MINIO_ENDPOINT: localhost
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
+          JWT_ACCESS_SECRET: ci_integration_access_secret
+          JWT_REFRESH_SECRET: ci_integration_refresh_secret
+        run: |
+          DATABASE_URL=postgresql://tweeter:tweeter@localhost:5433/tweeter_test \
+          REDIS_URL=redis://localhost:6380 \
+          WEB_ORIGIN=http://localhost:5173 \
+          MINIO_ENDPOINT=localhost \
+          MINIO_ACCESS_KEY=minioadmin \
+          MINIO_SECRET_KEY=minioadmin \
+          npx vitest run --config vitest.integration.config.ts
+
+  # ── 4. E2E (Playwright against dockerized prod-like stack) ──────────────────
+  e2e:
+    name: E2E Tests (Playwright)
+    needs: integration-test
+    runs-on: ubuntu-latest
+    env:
+      JWT_ACCESS_SECRET: e2e_ci_access_secret_32chars_long
+      JWT_REFRESH_SECRET: e2e_ci_refresh_secret_32chars_long
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install E2E deps (root)
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      # Boot the prod-like stack with e2e override:
+      #   - NODE_ENV=test to skip SSL (compose postgres has no SSL)
+      #   - FRONTEND_PORT=18080 to match PLAYWRIGHT_BASE_URL (avoids port 8080 conflicts)
+      - name: Start Dockerized stack
+        env:
+          FRONTEND_PORT: "18080"
+          WEB_ORIGIN: "http://localhost:18080"
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
+        timeout-minutes: 10
+
+      # Run DB migrations inside the running backend container
+      - name: Run database migrations
+        run: |
+          docker exec tweeter-backend-1 node_modules/.bin/typeorm migration:run \
+            -d dist/infra/database/data-source.js
+
+      - name: Run Playwright E2E tests
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:18080
+        run: npx playwright test --reporter=github
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v
+
+  # ── 5. Build (docker compose build — confirms images build clean) ────────────
+  build:
+    name: Docker Build
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build all images
+        run: docker compose build
