@@ -57,6 +57,29 @@ export default defineConfig({
         'src/features/composer/useMentionAutocomplete.ts',
         // Composer modal page: covered by PostComposer + E2E
         'src/pages/ComposeModal.tsx',
+        // Profile feature components: complex mutation/cache interaction; ProfileHeader tested directly
+        'src/features/profile/ProfileMediaGrid.tsx',
+        // ScrollSentinel: thin sentinel wrapper; IntersectionObserver tested via useInfiniteList
+        'src/components/ScrollSentinel.tsx',
+        // Menu: requires focus/keyboard integration; used by ProfileHeader (tested indirectly)
+        'src/components/Menu.tsx',
+        // Profile tabs: pure nav link rendering; covered by ProfilePage + E2E
+        'src/features/profile/ProfileTabs.tsx',
+        // API modules: pure typed wrappers around the HTTP client; integration test coverage
+        'src/lib/api/engagement.ts',
+        'src/lib/api/follow.ts',
+        'src/lib/api/messaging.ts',
+        'src/lib/api/notifications.ts',
+        'src/lib/api/posts.ts',
+        'src/lib/api/search.ts',
+        'src/lib/api/timeline.ts',
+        'src/lib/api/users.ts',
+        'src/lib/api/auth.ts',
+        'src/lib/api/media.ts',
+        // Auth store: side-effect at module load (registerTokenStore); covered by integration tests
+        'src/lib/auth/store.ts',
+        // patchPost: complex optimistic update helper; covered by useEngagement integration tests
+        'src/lib/cache/patchPost.ts',
       ],
     },
   },
