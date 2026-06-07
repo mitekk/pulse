@@ -21,14 +21,14 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| POST | `/api/v1/auth/register` | No | `{ email: string, handle: string, password: string, displayName?: string }` | `{ user: UserDto, accessToken: string }` + sets refresh cookie | planned |
-| POST | `/api/v1/auth/login` | No | `{ emailOrHandle: string, password: string }` | `{ user: UserDto, accessToken: string }` + sets refresh cookie | planned |
-| POST | `/api/v1/auth/refresh` | No (cookie) | — (reads refresh cookie) | `{ accessToken: string }` + rotates refresh cookie | planned |
-| POST | `/api/v1/auth/logout` | Yes | — | 204 No Content; clears refresh cookie | planned |
-| GET | `/api/v1/auth/me` | Yes | — | `{ user: UserDto }` | planned |
-| POST | `/api/v1/auth/verify-email` | No | `{ token: string }` | `{ message: "Email verified" }` | planned |
-| GET | `/api/v1/auth/sessions` | Yes | — | `{ items: SessionDto[], cursor: string, hasMore: boolean }` | planned |
-| DELETE | `/api/v1/auth/sessions/:id` | Yes | — | 204 No Content | planned |
+| POST | `/api/v1/auth/register` | No | `{ email: string, handle: string, password: string, displayName?: string }` | `{ user: UserDto, accessToken: string }` + sets refresh cookie | implemented |
+| POST | `/api/v1/auth/login` | No | `{ emailOrHandle: string, password: string }` | `{ user: UserDto, accessToken: string }` + sets refresh cookie | implemented |
+| POST | `/api/v1/auth/refresh` | No (cookie) | — (reads refresh cookie + X-CSRF-Token header) | `{ accessToken: string }` + rotates refresh cookie | implemented |
+| POST | `/api/v1/auth/logout` | Yes | — | 204 No Content; clears refresh cookie | implemented |
+| GET | `/api/v1/auth/me` | Yes | — | `{ user: UserDto }` | implemented |
+| POST | `/api/v1/auth/verify-email` | No | `{ token: string }` | `{ message: "Email verified" }` | implemented |
+| GET | `/api/v1/auth/sessions` | Yes | — | `{ items: SessionDto[], cursor: string, hasMore: boolean }` | implemented |
+| DELETE | `/api/v1/auth/sessions/:id` | Yes | — | 204 No Content | implemented |
 
 **SessionDto:**
 ```

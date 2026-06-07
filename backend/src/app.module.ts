@@ -7,6 +7,7 @@ import { RedisModule } from './infra/redis/redis.module';
 import { QueueModule } from './infra/queue/queue.module';
 import { StorageModule } from './infra/storage/storage.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -22,8 +23,9 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     QueueModule,
     StorageModule,
     HealthModule,
-    // Domain modules slot here in Phase 2+:
-    // AuthModule, UsersModule, PostsModule, TimelineModule, EngagementModule,
+    AuthModule,
+    // Domain modules slot here in Phase 2+ subtasks:
+    // UsersModule, PostsModule, TimelineModule, EngagementModule,
     // MediaModule, MessagingModule, NotificationsModule, SearchModule,
     // HashtagsModule, RealtimeModule
   ],

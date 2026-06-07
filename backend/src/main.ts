@@ -4,6 +4,7 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import helmet from '@fastify/helmet';
+import fastifyCookie from '@fastify/cookie';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -20,18 +21,21 @@ async function bootstrap() {
   const port = config.get<number>('PORT') ?? 3000;
   const nodeEnv = config.get<string>('NODE_ENV') ?? 'development';
 
+  // Cookie support — required for httpOnly refresh token + CSRF cookie
+  await app.register(fastifyCookie);
+
   // Security headers via @fastify/helmet
   await app.register(helmet, {
     contentSecurityPolicy: nodeEnv === 'production',
     crossOriginEmbedderPolicy: nodeEnv === 'production',
   });
 
-  // CORS — explicit allow-list; never wildcard in production
+  // CORS — explicit allow-list; never wildcard in production; X-CSRF-Token required for refresh
   app.enableCors({
     origin: webOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-CSRF-Token'],
   });
 
   // Global validation pipe — whitelist + forbid unknown properties + transform
