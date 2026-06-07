@@ -127,13 +127,13 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| GET | `/api/v1/conversations` | Yes | `?cursor=&limit=` | `{ items: ConversationDto[], cursor: string, hasMore: boolean }` | planned |
-| POST | `/api/v1/conversations` | Yes | `{ recipientHandle: string }` | `{ conversation: ConversationDto }` 201 (idempotent — returns existing if already exists) | planned |
-| GET | `/api/v1/conversations/:id/messages` | Yes | `?cursor=&limit=` | `{ items: MessageDto[], cursor: string, hasMore: boolean }` | planned |
-| POST | `/api/v1/conversations/:id/messages` | Yes | `{ text?: string, mediaId?: string, clientNonce: string }` | `{ message: MessageDto }` 201 | planned |
-| POST | `/api/v1/conversations/:id/read` | Yes | `{ lastReadMessageId: string }` | 200 `{ ok: true }` | planned |
-| POST | `/api/v1/conversations/:id/mute` | Yes | — | 200 `{ muted: true }` | planned |
-| DELETE | `/api/v1/conversations/:id/mute` | Yes | — | 200 `{ muted: false }` | planned |
+| GET | `/api/v1/conversations` | Yes | `?cursor=&limit=` | `{ items: ConversationDto[], cursor: string, hasMore: boolean }` | implemented |
+| POST | `/api/v1/conversations` | Yes | `{ recipientHandle: string }` | `{ conversation: ConversationDto }` 201 (idempotent — returns existing if already exists) | implemented |
+| GET | `/api/v1/conversations/:id/messages` | Yes | `?cursor=&limit=` | `{ items: MessageDto[], cursor: string, hasMore: boolean }` | implemented |
+| POST | `/api/v1/conversations/:id/messages` | Yes | `{ text?: string, mediaId?: string, clientNonce: string }` | `{ message: MessageDto }` 201 | implemented |
+| POST | `/api/v1/conversations/:id/read` | Yes | `{ lastReadMessageId: string }` | 200 `{ ok: true }` | implemented |
+| POST | `/api/v1/conversations/:id/mute` | Yes | — | 200 `{ muted: true }` | implemented |
+| DELETE | `/api/v1/conversations/:id/mute` | Yes | — | 200 `{ muted: false }` | implemented |
 
 **ConversationDto:**
 ```
@@ -333,3 +333,5 @@ Base transport: `ws://host/socket.io` (Socket.IO protocol). Auth: access token i
 | `dm.markRead` | `{ conversationId: string, lastReadMessageId: string }` | Updates DB + emits `dm.read` |
 | `subscribe.post` | `{ postId: string }` | Join `post:{id}` room |
 | `unsubscribe.post` | `{ postId: string }` | Leave `post:{id}` room |
+| `join.conversation` | `{ conversationId: string }` | Join `conversation:{id}` room (participant check enforced) — added during implementation |
+| `leave.conversation` | `{ conversationId: string }` | Leave `conversation:{id}` room — added during implementation |

@@ -404,6 +404,16 @@ export class UsersService {
     return { state: 'declined' };
   }
 
+  // ─── Public lookup helpers ────────────────────────────────────────────────
+
+  /**
+   * Find a user by handle. Returns null if not found.
+   * Used by MessagingController to resolve recipientHandle → User.
+   */
+  async findByHandle(handle: string): Promise<User | null> {
+    return this.userRepo.findOne({ where: { handle: handle as unknown as string } });
+  }
+
   // ─── Private helpers ──────────────────────────────────────────────────────
 
   async requireUser(handle: string): Promise<User> {

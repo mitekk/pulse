@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import helmet from '@fastify/helmet';
 import fastifyCookie from '@fastify/cookie';
 import { AppModule } from './app.module';
+import { RedisIoAdapter } from './modules/realtime/redis-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -20,6 +21,12 @@ async function bootstrap() {
   const webOrigin = config.get<string>('WEB_ORIGIN') ?? 'http://localhost:5173';
   const port = config.get<number>('PORT') ?? 3000;
   const nodeEnv = config.get<string>('NODE_ENV') ?? 'development';
+  const redisUrl = config.get<string>('REDIS_URL') ?? 'redis://localhost:6379';
+
+  // Wire Socket.IO Redis adapter for cross-instance fan-out
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis(redisUrl);
+  app.useWebSocketAdapter(redisIoAdapter);
 
   // Cookie support — required for httpOnly refresh token + CSRF cookie
   await app.register(fastifyCookie);
