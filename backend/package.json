@@ -1,0 +1,61 @@
+{
+  "name": "tweeter-backend",
+  "version": "0.1.0",
+  "description": "Microblogging platform backend — NestJS 11 + Fastify",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "migration:generate": "ts-node -r tsconfig-paths/register -P tsconfig.json node_modules/.bin/typeorm migration:generate -d src/infra/database/data-source.ts",
+    "migration:run": "ts-node -r tsconfig-paths/register -P tsconfig.json node_modules/.bin/typeorm migration:run -d src/infra/database/data-source.ts",
+    "migration:revert": "ts-node -r tsconfig-paths/register -P tsconfig.json node_modules/.bin/typeorm migration:revert -d src/infra/database/data-source.ts"
+  },
+  "dependencies": {
+    "@fastify/helmet": "^12.0.1",
+    "@nestjs/bullmq": "^11.0.2",
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/platform-fastify": "^11.1.0",
+    "@nestjs/typeorm": "^11.0.0",
+    "bullmq": "^5.50.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "ioredis": "^5.4.2",
+    "minio": "^8.0.5",
+    "pg": "^8.13.3",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.21",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.7",
+    "@nestjs/testing": "^11.1.0",
+    "@types/node": "^22.15.3",
+    "@types/pg": "^8.11.11",
+    "@types/uuid": "^10.0.0",
+    "@eslint/js": "^9.26.0",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "typescript-eslint": "^8.32.1",
+    "@vitest/coverage-v8": "^4.1.8",
+    "eslint": "^9.26.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
+    "prettier": "^3.5.3",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.8"
+  }
+}
