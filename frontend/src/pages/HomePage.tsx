@@ -15,6 +15,7 @@ import { useTimelineBufferStore } from '@/lib/stores/timelineBufferStore'
 import { queryKeys } from '@/lib/cache/queryKeys'
 import { useHomeTimeline } from '@/features/timeline/useHomeTimeline'
 import { PostCard } from '@/components/PostCard'
+import { PostComposer } from '@/features/composer/PostComposer'
 import { InfiniteList } from '@/components/InfiniteList'
 import { EmptyState } from '@/components/EmptyState'
 import type { PostDto } from '@/types/api'
@@ -248,6 +249,14 @@ export default function HomePage() {
           <NewPostsPill count={newCount} onFlush={handleFlushNewPosts} />
         </div>
       )}
+
+      {/* Inline composer */}
+      <div
+        data-testid="home-composer"
+        style={{ borderBottom: '1px solid var(--color-border)' }}
+      >
+        <PostComposer mode="new" />
+      </div>
 
       {/* Timeline feed */}
       <div ref={feedRef}>

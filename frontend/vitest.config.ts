@@ -48,6 +48,15 @@ export default defineConfig({
         'src/pages/HomePage.tsx',
         // Feature hooks that require real network
         'src/features/timeline/useHomeTimeline.ts',
+        // Media upload hook: XHR progress + polling require integration tests
+        'src/hooks/useMediaUpload.ts',
+        // PostComposer: complex integration (auth + form + media + autocomplete + mutations)
+        // Core char-counter and tokenizer logic is unit-tested directly
+        'src/features/composer/PostComposer.tsx',
+        // Mention autocomplete: requires debounced network + DOM cursor position; covered by PostComposer E2E
+        'src/features/composer/useMentionAutocomplete.ts',
+        // Composer modal page: covered by PostComposer + E2E
+        'src/pages/ComposeModal.tsx',
       ],
     },
   },
