@@ -2,11 +2,12 @@
   "workflow": "scaffold",
   "schema_version": 1,
   "status": "in_progress",
-  "last_completed_step": 0,
-  "next_step": 1,
-  "updated_at": "2026-06-06T22:05:44Z",
+  "last_completed_step": 1,
+  "next_step": 2,
+  "updated_at": "2026-06-07T05:46:31Z",
   "blockers": [],
   "prd_version": "v1",
   "prd_path": "docs/prd/PRD-current.md",
-  "parallel_pending_steps": []
+  "parallel_pending_steps": [],
+  "last_commit": "b67f111"
 }
