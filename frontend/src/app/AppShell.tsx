@@ -7,12 +7,17 @@
 // ============================================================
 
 import { useState } from 'react'
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useCurrentUser } from '@/lib/auth/useCurrentUser'
 import { useThemeStore } from '@/lib/theme'
 import { authApi } from '@/lib/api/auth'
 import { useAuthStore } from '@/lib/auth/store'
 import { useRealtimeSetup } from '@/lib/realtime/useRealtimeSetup'
+import { useUnreadStore } from '@/lib/stores/unreadStore'
+import { SearchTypeahead } from '@/features/search/SearchTypeahead'
+import { useQuery } from '@tanstack/react-query'
+import { searchApi } from '@/lib/api/search'
+import { queryKeys } from '@/lib/cache/queryKeys'
 
 // ── Icon components ────────────────────────────────────────
 function HomeIcon({ filled }: { filled?: boolean }) {
@@ -186,11 +191,11 @@ interface NavItem {
   to: string
   label: string
   icon: (active: boolean) => React.ReactNode
-  badge?: number
+  badgeKey?: 'notifications' | 'messages'
   testId: string
 }
 
-const navItems: NavItem[] = [
+const NAV_ITEMS_STATIC: NavItem[] = [
   {
     to: '/',
     label: 'Home',
@@ -207,14 +212,14 @@ const navItems: NavItem[] = [
     to: '/notifications',
     label: 'Alerts',
     icon: (a) => <NotifIcon filled={a} />,
-    badge: 0,
+    badgeKey: 'notifications',
     testId: 'nav-notifications',
   },
   {
     to: '/messages',
     label: 'Messages',
     icon: (a) => <MsgIcon filled={a} />,
-    badge: 0,
+    badgeKey: 'messages',
     testId: 'nav-messages',
   },
   {
@@ -238,6 +243,14 @@ function NavRail({ compact }: { compact: boolean }) {
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
+  const notificationsCount = useUnreadStore((s) => s.notificationsCount)
+  const unreadMessagesCount = useUnreadStore((s) => s.getTotalUnreadMessages())
+
+  const getBadge = (item: NavItem): number => {
+    if (item.badgeKey === 'notifications') return notificationsCount
+    if (item.badgeKey === 'messages') return unreadMessagesCount
+    return 0
+  }
 
   const handleLogout = async () => {
     try {
@@ -288,7 +301,7 @@ function NavRail({ compact }: { compact: boolean }) {
 
       {/* Nav links */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', width: '100%' }}>
-        {navItems.map((item) => (
+        {NAV_ITEMS_STATIC.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -315,8 +328,9 @@ function NavRail({ compact }: { compact: boolean }) {
               <>
                 <span style={{ flexShrink: 0, position: 'relative' }}>
                   {item.icon(isActive)}
-                  {typeof item.badge === 'number' && item.badge > 0 && (
+                  {getBadge(item) > 0 && (
                     <span
+                      data-testid={`nav-badge-${item.testId}`}
                       style={{
                         position: 'absolute',
                         top: '-4px',
@@ -334,7 +348,7 @@ function NavRail({ compact }: { compact: boolean }) {
                         padding: '0 3px',
                       }}
                     >
-                      {item.badge > 99 ? '99+' : item.badge}
+                      {getBadge(item) > 99 ? '99+' : getBadge(item)}
                     </span>
                   )}
                 </span>
@@ -533,7 +547,15 @@ function NavRail({ compact }: { compact: boolean }) {
 
 // ── Mobile bottom tab bar ──────────────────────────────────
 function BottomTabBar() {
-  const mobileNavItems = navItems.slice(0, 4)
+  const mobileNavItems = NAV_ITEMS_STATIC.slice(0, 4)
+  const notificationsCount = useUnreadStore((s) => s.notificationsCount)
+  const unreadMessagesCount = useUnreadStore((s) => s.getTotalUnreadMessages())
+
+  const getBadge = (item: NavItem): number => {
+    if (item.badgeKey === 'notifications') return notificationsCount
+    if (item.badgeKey === 'messages') return unreadMessagesCount
+    return 0
+  }
 
   return (
     <nav
@@ -574,8 +596,9 @@ function BottomTabBar() {
             <>
               <span style={{ position: 'relative' }}>
                 {item.icon(isActive)}
-                {typeof item.badge === 'number' && item.badge > 0 && (
+                {getBadge(item) > 0 && (
                   <span
+                    data-testid={`nav-badge-mobile-${item.testId}`}
                     style={{
                       position: 'absolute',
                       top: '-2px',
@@ -682,8 +705,25 @@ function MobileTopBar() {
   )
 }
 
-// ── Right sidebar placeholder ──────────────────────────────
+// ── Right sidebar ──────────────────────────────────────────
 function RightSidebar() {
+  const navigate = useNavigate()
+  const { data: trendsData } = useQuery({
+    queryKey: queryKeys.search.trends(),
+    queryFn: () => searchApi.getTrends(),
+    staleTime: 5 * 60_000,
+  })
+
+  const handleSearch = (q: string) => {
+    if (q.startsWith('#')) {
+      navigate(`/tag/${q.slice(1)}`)
+    } else if (q.startsWith('@')) {
+      navigate(`/@${q.slice(1)}`)
+    } else {
+      navigate(`/search?q=${encodeURIComponent(q)}&type=top`)
+    }
+  }
+
   return (
     <aside
       aria-label="Trends and suggestions"
@@ -695,26 +735,87 @@ function RightSidebar() {
         top: 0,
         height: '100dvh',
         overflowY: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
       }}
     >
-      <div
-        style={{
-          background: 'var(--color-surface)',
-          borderRadius: 'var(--radius-xl)',
-          border: '1px solid var(--color-border)',
-          padding: '1rem',
-        }}
-      >
-        <p
+      {/* Search box */}
+      <SearchTypeahead onSearch={handleSearch} placeholder="Search…" />
+
+      {/* Trending topics */}
+      {trendsData && trendsData.trends.length > 0 && (
+        <div
           style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--color-text-muted)',
-            textAlign: 'center',
+            background: 'var(--color-surface)',
+            borderRadius: 'var(--radius-xl)',
+            border: '1px solid var(--color-border)',
+            overflow: 'hidden',
           }}
         >
-          Trends & suggestions coming soon
-        </p>
-      </div>
+          <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--color-border)' }}>
+            <h2
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: 'var(--text-base)',
+                fontWeight: 'var(--font-weight-bold)',
+                color: 'var(--color-text)',
+              }}
+            >
+              Trending
+            </h2>
+          </div>
+          {trendsData.trends.slice(0, 5).map((trend) => (
+            <Link
+              key={trend.tag}
+              to={`/tag/${trend.tag}`}
+              data-testid={`sidebar-trend-${trend.tag}`}
+              style={{
+                display: 'block',
+                padding: '0.75rem 1rem',
+                borderBottom: '1px solid var(--color-border)',
+                textDecoration: 'none',
+                color: 'inherit',
+                transition: 'background var(--duration-fast)',
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 'var(--font-weight-semibold)',
+                  color: 'var(--color-text)',
+                  margin: 0,
+                }}
+              >
+                #{trend.tag}
+              </p>
+              <p
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--color-text-muted)',
+                  margin: '2px 0 0',
+                }}
+              >
+                {trend.postCount.toLocaleString()} posts
+              </p>
+            </Link>
+          ))}
+          <Link
+            to="/explore"
+            data-testid="sidebar-explore-more"
+            style={{
+              display: 'block',
+              padding: '0.75rem 1rem',
+              fontSize: 'var(--text-sm)',
+              color: 'var(--color-accent)',
+              fontWeight: 'var(--font-weight-semibold)',
+              textDecoration: 'none',
+            }}
+          >
+            Show more
+          </Link>
+        </div>
+      )}
     </aside>
   )
 }

@@ -29,6 +29,7 @@ const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'))
 const ProfilePage = React.lazy(() => import('@/pages/ProfilePage'))
 const PostPage = React.lazy(() => import('@/pages/PostPage'))
 const PhotoPage = React.lazy(() => import('@/pages/PhotoPage'))
+const TagTimelinePage = React.lazy(() => import('@/pages/TagTimelinePage'))
 
 // ── Modal routes (lazy) ────────────────────────────────────
 const ComposeModal = React.lazy(() => import('@/pages/ComposeModal'))
@@ -104,6 +105,22 @@ export const router = createBrowserRouter([
         element: (
           <LazyPage>
             <NotificationsPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/notifications/mentions',
+        element: (
+          <LazyPage>
+            <NotificationsPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/tag/:tag',
+        element: (
+          <LazyPage>
+            <TagTimelinePage />
           </LazyPage>
         ),
       },

@@ -25,14 +25,22 @@ export default defineConfig({
         'src/pages/ComposeDmModal.tsx',
         'src/pages/ComposeModal.tsx',
         'src/pages/ConversationPage.tsx',
-        'src/pages/ExplorePage.tsx',
         'src/pages/MessagesPage.tsx',
-        'src/pages/NotificationsPage.tsx',
         'src/pages/PhotoPage.tsx',
         'src/pages/PostPage.tsx',
         'src/pages/ProfilePage.tsx',
-        'src/pages/SearchPage.tsx',
         'src/pages/SettingsPage.tsx',
+        // NotificationsPage / SearchPage / ExplorePage / TagTimelinePage: complex integration;
+        // core logic tested via feature-level tests
+        'src/pages/NotificationsPage.tsx',
+        'src/pages/SearchPage.tsx',
+        'src/pages/ExplorePage.tsx',
+        'src/pages/TagTimelinePage.tsx',
+        // Notification feature: page components; core logic tested via notificationUtils tests
+        'src/features/notifications/NotificationItem.tsx',
+        'src/features/notifications/NotificationIcon.tsx',
+        // Search typeahead: requires debounced network + DOM; covered by E2E
+        'src/features/search/SearchTypeahead.tsx',
         // App bootstrap / routing (E2E coverage)
         'src/app/router.tsx',
         'src/app/AppShell.tsx',

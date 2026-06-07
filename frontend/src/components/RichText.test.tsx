@@ -52,8 +52,8 @@ describe('RichText', () => {
     renderRich(text, entities)
     const link = screen.getByTestId('hashtag-world')
     expect(link).toBeInTheDocument()
-    expect(link.getAttribute('href')).toContain('/search')
-    expect(link.getAttribute('href')).toContain('%23world')
+    expect(link.getAttribute('href')).toContain('/tag/')
+    expect(link.getAttribute('href')).toContain('world')
     expect(link.textContent).toBe('#world')
   })
 

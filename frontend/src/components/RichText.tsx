@@ -111,7 +111,7 @@ export function RichText({ text, entities, block = true }: RichTextProps) {
         return (
           <Link
             key={i}
-            to={`/search?q=${encodeURIComponent('#' + seg.tag)}&type=top`}
+            to={`/tag/${seg.tag}`}
             data-testid={`hashtag-${seg.tag}`}
             style={accentStyle}
           >
