@@ -1,13 +1,13 @@
 {
   "workflow": "scaffold",
   "schema_version": 1,
-  "status": "blocked",
+  "status": "in_progress",
   "last_completed_step": 3,
-  "next_step": 2,
-  "updated_at": "2026-06-07T08:07:04Z",
-  "blockers": ["Step 3 (frontend) complete; Step 2 (backend) finishing: notifications + search/hardening remain."],
+  "next_step": 3.5,
+  "updated_at": "2026-06-07T08:34:26Z",
+  "blockers": [],
   "prd_version": "v1",
   "prd_path": "docs/prd/PRD-current.md",
-  "parallel_pending_steps": [2],
-  "last_commit": "f072317"
+  "parallel_pending_steps": [],
+  "last_commit": "ca1d4b5"
 }
