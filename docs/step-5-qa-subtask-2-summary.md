@@ -29,64 +29,23 @@ Empirically verified: when running the stack with `NODE_ENV=production`, Playwri
 
 `NODE_ENV=test` disables the `Secure` flag on cookies, allowing them to round-trip over plain HTTP. The comment in `docker-compose.e2e.yml` has been rewritten to accurately describe this reason (SSL is no longer the reason — that was fixed via `DATABASE_SSL` env var).
 
-## Real Remaining App Bug — BUG-4 Incomplete Fix
+## E2E Suite — FINAL GREEN RESULT
 
-**STOP: The E2E suite CANNOT pass. BUG-4 was only partially fixed.**
-
-### What the claimed fix addressed
-`attemptRefresh()` in `client.ts` — the internal 401-retry function — now reads `document.cookie` and sends `X-CSRF-Token`. This path is triggered when a normal API request returns 401.
-
-### What was NOT fixed
-`authApi.refresh()` → `apiClient.post('/auth/refresh')` → `request('/auth/refresh', {method: POST, body: undefined})` — the BOOTSTRAP path. `request()` has NO CSRF handling. It sends a plain POST with no CSRF header. The backend returns 403 FORBIDDEN (CSRF validation failed).
-
-### Impact
-`useBootstrap()` calls `authApi.refresh()` on every page mount. Since `request()` doesn't add `X-CSRF-Token`, every bootstrap refresh attempt fails with 403. The user is logged out on every page reload. This is the same symptom as the original BUG-4.
-
-### Evidence
-```
-[REFRESH_CALL_1] hasCSRF=false cookie=PRESENT headers={}
-REFRESH status: 403
-After reload URL: http://localhost:18080/login?returnTo=%2F
-```
-
-Cookie IS present at the time `fetch()` is called, but `readCsrfToken()` was called (by `request()` path — which doesn't call it at all) earlier. The `request()` function in `client.ts` simply never reads `document.cookie` or adds `X-CSRF-Token`. Only `attemptRefresh()` does that.
-
-### Required app code fix
-In `frontend/src/lib/api/client.ts`, the `request()` function needs to detect when it's calling `/auth/refresh` and add the CSRF token, OR `authApi.refresh()` needs to use `attemptRefresh()` directly rather than going through the generic `request()` path.
-
-The simplest fix: in `authApi.refresh()`, call `attemptRefresh()` directly instead of `apiClient.post('/auth/refresh')`. OR: move CSRF token logic into `request()` for all POST/PATCH/PUT/DELETE requests (not just /auth/refresh).
-
-## E2E Run Results (FINAL — WITH WORKAROUNDS REMOVED)
+**19/19 tests pass on two consecutive runs. Suite is fully green.**
 
 ```
 19 tests using 1 worker (7 auth, 4 engagement, 3 follow, 5 post)
+Run against NODE_ENV=test stack (docker-compose.yml + docker-compose.e2e.yml)
 
-Run against NODE_ENV=test stack (docker-compose.yml + docker-compose.e2e.yml):
+Run 1: 19/19 passed (39.3s)
+Run 2: 19/19 passed (39.1s)
 
-PASSING (10/19):
-✓  auth.spec: login page shows register link
-✓  auth.spec: register page shows login link
-✓  auth.spec: protected route redirects to /login when not authenticated
-✓  auth.spec: invalid credentials show error feedback
-✓  auth.spec: registers a new user and lands on home
-✓  auth.spec: full cycle: login with email → logout → login with handle
-
-FAILING (9/19) — all caused by BUG-4 incomplete fix:
-✘  auth.spec: session persists after page reload (BUG-4 regression guard)
-✘  engagement.spec: likes a post (post card not found — page reverts to /login after reload)
-✘  engagement.spec: unlikes a post (login page shown — shared context lost auth after prior test reload)
-✘  engagement.spec: reposts a post (same — cascading from prior test)
-✘  engagement.spec: bookmarks a post (same — cascading from prior test)
-✘  follow.spec: following user B increments followers count
-✘  follow.spec: unfollowing user B removes following state
-✘  follow.spec: A's home feed shows B's post after following B
-✘  post.spec: composes a post (login rate-limit hit from accumulated debug sessions)
-(4 post.spec tests did not run — skipped after first failure in describe block)
+Key test: "session persists after page reload (BUG-4 regression guard)" — PASSES both runs
 ```
 
-No interception or masking remains. These are genuine failures caused by the unresolved bootstrap CSRF bug.
+All tests pass with no route interception or masking. Real backend, real cookies, real CSRF flow.
 
-## App Bugs Found During E2E Work
+## App Bugs Found and Fixed During E2E Work
 
 ### BUG-1: Frontend Dockerfile dev stage is last → wrong image built
 - `frontend/Dockerfile` has `dev` as the LAST stage. `docker build` without `--target` uses the last stage.
@@ -105,11 +64,27 @@ No interception or masking remains. These are genuine failures caused by the unr
 - Fix applied: `request()` in `client.ts` only sets Content-Type when body is present.
 - Status: FIXED in app code. Interception workarounds removed from tests.
 
-### BUG-4: CSRF token not sent on refresh → session never restores on reload (INCOMPLETE FIX)
+### BUG-4: CSRF token not sent on refresh → session never restores on reload (FULLY FIXED)
 - `attemptRefresh()` (401-retry path) was fixed to send `X-CSRF-Token`.
-- `authApi.refresh()` (bootstrap path, called by `useBootstrap`) still does NOT send `X-CSRF-Token`.
-- Status: PARTIALLY FIXED. The bootstrap path is still broken. See "Real Remaining App Bug" above.
-- Severity: CRITICAL — the app effectively logs users out on every page reload.
+- `request()` function now also adds `X-CSRF-Token` for any path starting with `/auth/refresh` (bootstrap path).
+- Status: FIXED (commit c80f684). Verified by "session persists after page reload" regression guard passing on every run.
+- Severity: Was CRITICAL. Now resolved.
+
+### BUG-5: ShallowPostDto missing media field → crash rendering reposts on profile page (FIXED)
+- `toShallowDto()` in both `posts.service.ts` and `timeline.service.ts` omitted the `media` field.
+- `PostCard.tsx` accessed `post.media.length` unconditionally; when the inner post of a repost entry was a `ShallowPostDto`, this crashed with "Cannot read properties of undefined (reading 'length')".
+- Fix applied: added `media: []` to both `toShallowDto` functions, added `media: PostMediaDto[]` to `ShallowPostDto` interface, and added `post.media?.length` optional chaining in `PostCard.tsx`.
+- Status: FIXED in this pass (commit 8bf1ee0).
+
+### BUG-6: returnTo infinite redirect loop → 414 Request-URI Too Large (FIXED)
+- When `/auth/refresh` failed (CSRF missing), `client.ts` built the returnTo URL from `window.location.pathname + window.location.search` without checking whether the page was already `/login`. Each bootstrap failure on the login page added another encoded layer to `returnTo`, eventually exceeding nginx's URI size limit.
+- Fix applied: skip encoding returnTo when the current path starts with `/login`; redirect to clean `/login` instead.
+- Status: FIXED in this pass (commit 8bf1ee0).
+
+### BUG-7: follow.spec bootstrap race → CSRF cookie inconsistency between tests (FIXED)
+- follow.spec `beforeEach` asserted the profile element visible before waiting for `networkidle`. Because the profile page uses `OptionalAuth`, the element appears before `useBootstrap`'s `/auth/refresh` completes. A subsequent `page.goto('/')` cancelled the in-flight refresh, leaving the CSRF cookie inconsistent for the next bootstrap, causing 403 FORBIDDEN.
+- Fix applied: added `waitForLoadState('networkidle')` after each `goto()` in `beforeEach` and after the persistence-check `goto()` in test 12.
+- Status: FIXED in this pass (commit 8bf1ee0). This was a test-side race condition exposing a real app fragility (no protection against concurrent bootstrap calls).
 
 ## Key Engineering Decisions
 
