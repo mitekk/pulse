@@ -84,13 +84,13 @@
 | GET | `/api/v1/posts/:id/replies` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | implemented |
 | GET | `/api/v1/posts/:id/reposts` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | implemented |
 | GET | `/api/v1/posts/:id/quotes` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | implemented |
-| GET | `/api/v1/posts/:id/likes` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | changed — stub returning `[]`; full implementation in EngagementModule (subtask 5) |
-| POST | `/api/v1/posts/:id/like` | Yes | — | 201 `{ liked: true, count: number }` | planned |
-| DELETE | `/api/v1/posts/:id/like` | Yes | — | 200 `{ liked: false, count: number }` | planned |
+| GET | `/api/v1/posts/:id/likes` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | implemented |
+| POST | `/api/v1/posts/:id/like` | Yes | — | 201 `{ liked: true, count: number }` | implemented |
+| DELETE | `/api/v1/posts/:id/like` | Yes | — | 200 `{ liked: false, count: number }` | implemented |
 | POST | `/api/v1/posts/:id/repost` | Yes | — | 201 `{ reposted: true, count: number }` | implemented |
 | DELETE | `/api/v1/posts/:id/repost` | Yes | — | 200 `{ reposted: false, count: number }` | implemented |
-| POST | `/api/v1/posts/:id/bookmark` | Yes | — | 201 `{ bookmarked: true }` | planned |
-| DELETE | `/api/v1/posts/:id/bookmark` | Yes | — | 200 `{ bookmarked: false }` | planned |
+| POST | `/api/v1/posts/:id/bookmark` | Yes | — | 201 `{ bookmarked: true }` | implemented |
+| DELETE | `/api/v1/posts/:id/bookmark` | Yes | — | 200 `{ bookmarked: false }` | implemented |
 
 ---
 
@@ -100,7 +100,7 @@
 |--------|------|-------|--------------|---------------|--------|
 | GET | `/api/v1/timeline/home` | Yes | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
 | GET | `/api/v1/timeline/hashtag/:tag` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/bookmarks` | Yes | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
+| GET | `/api/v1/bookmarks` | Yes | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | implemented |
 
 ---
 

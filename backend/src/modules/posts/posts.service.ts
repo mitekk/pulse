@@ -18,6 +18,7 @@ import { User } from '../users/user.entity';
 import { VisibilityService } from '../users/visibility.service';
 import { EntityExtractorService, ExtractedEntities } from './entity-extractor.service';
 import { POSTS_NOTIFICATION_PORT, PostsNotificationPort } from './posts-notification.port';
+import { VIEWER_FLAGS_PORT, ViewerFlagsPort } from './viewer-flags.port';
 import { SnowflakeUtil } from '../../common/utils/snowflake.util';
 import { CursorUtil } from '../../common/utils/cursor.util';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -141,6 +142,8 @@ export class PostsService {
     private readonly entityExtractor: EntityExtractorService,
     @Inject(POSTS_NOTIFICATION_PORT)
     private readonly notificationPort: PostsNotificationPort,
+    @Inject(VIEWER_FLAGS_PORT)
+    private readonly viewerFlagsPort: ViewerFlagsPort,
     @InjectQueue('fanout')
     private readonly fanoutQueue: Queue,
     @InjectQueue('search')
@@ -455,7 +458,7 @@ export class PostsService {
     }
 
     const entities = await this.loadEntities(postId, post.text);
-    const viewerFlags = await this.loadViewerFlags(viewerId);
+    const viewerFlags = await this.loadViewerFlags(viewerId, postId);
 
     let quoteOfDto: ShallowPostDto | null = null;
     if (post.quoteOfId) {
@@ -560,7 +563,7 @@ export class PostsService {
 
       if (vis.visible) {
         const ent = await this.loadEntities(ancestor.id, ancestor.text);
-        const vf = await this.loadViewerFlags(viewerId);
+        const vf = await this.loadViewerFlags(viewerId, ancestor.id);
         ancestors.unshift(toPostDto(ancestor, ent, vf, null, null, null));
       }
 
@@ -595,10 +598,14 @@ export class PostsService {
       suppressDeleted: false,
     });
 
+    // Batch-hydrate viewer flags for the reply page
+    const replyIds = filtered.map((r) => r.id);
+    const replyFlags = await this.viewerFlagsPort.hydrate(viewerId, replyIds);
+
     const replyDtos: PostDto[] = [];
     for (const r of filtered) {
       const ent = await this.loadEntities(r.id, r.text);
-      const vf = await this.loadViewerFlags(viewerId);
+      const vf = replyFlags.get(r.id) ?? { liked: false, reposted: false, bookmarked: false };
       replyDtos.push(toPostDto(r, ent, vf, null, null, null));
     }
 
@@ -726,10 +733,10 @@ export class PostsService {
     return this.entityExtractor.extractAndPersist(postId, text);
   }
 
-  /** Load viewer engagement flags — stubs until EngagementModule (subtask 5) */
-  private async loadViewerFlags(_viewerId: string | null): Promise<PostViewerDto> {
-    // TODO: implemented in EngagementModule (subtask 5)
-    return { liked: false, reposted: false, bookmarked: false };
+  /** Load viewer engagement flags via ViewerFlagsPort (real impl from EngagementModule). */
+  private async loadViewerFlags(viewerId: string | null, postId?: string): Promise<PostViewerDto> {
+    if (!viewerId || !postId) return { liked: false, reposted: false, bookmarked: false };
+    return this.viewerFlagsPort.hydrateOne(viewerId, postId);
   }
 
   /**
@@ -763,10 +770,14 @@ export class PostsService {
       suppressDeleted: true,
     });
 
+    // Batch-hydrate viewer flags for the whole page
+    const pageIds = filtered.map((p) => p.id);
+    const pageFlags = await this.viewerFlagsPort.hydrate(viewerId, pageIds);
+
     const items: PostDto[] = [];
     for (const p of filtered) {
       const ent = await this.loadEntities(p.id, p.text);
-      const vf = await this.loadViewerFlags(viewerId);
+      const vf = pageFlags.get(p.id) ?? { liked: false, reposted: false, bookmarked: false };
       items.push(toPostDto(p, ent, vf, null, null, null));
     }
 

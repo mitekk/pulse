@@ -113,19 +113,8 @@ export class PostsController {
     return this.postsService.getQuotes(id, user?.id ?? null, lim, cursor);
   }
 
-  // ── GET /api/v1/posts/:id/likes ───────────────────────────────────────────
-
-  @Get('posts/:id/likes')
-  @UseGuards(OptionalAuthGuard)
-  async getLikes(
-    @Param('id') id: string,
-    @Query('limit') limit?: string,
-    @Query('cursor') cursor?: string,
-    @CurrentUser() user?: AuthUser,
-  ) {
-    const lim = Math.min(parseInt(limit ?? '20', 10) || 20, 100);
-    return this.postsService.getLikes(id, user?.id ?? null, lim, cursor);
-  }
+  // NOTE: GET /api/v1/posts/:id/likes is handled by EngagementController
+  // (EngagementModule, subtask 5). The stub in PostsService is no longer exposed here.
 
   // ── POST /api/v1/posts/:id/repost ─────────────────────────────────────────
 

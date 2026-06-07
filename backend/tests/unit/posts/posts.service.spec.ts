@@ -134,6 +134,11 @@ function buildService() {
   const fanoutQueue = { add: vi.fn().mockResolvedValue(undefined) };
   const searchQueue = { add: vi.fn().mockResolvedValue(undefined) };
 
+  const viewerFlagsPort = {
+    hydrate: vi.fn().mockResolvedValue(new Map()),
+    hydrateOne: vi.fn().mockResolvedValue({ liked: false, reposted: false, bookmarked: false }),
+  };
+
   const svc = new PostsService(
     postRepo as never,
     userRepo as never,
@@ -144,6 +149,7 @@ function buildService() {
     visibilityService as never,
     entityExtractor as never,
     notificationPort as never,
+    viewerFlagsPort as never,
     fanoutQueue as never,
     searchQueue as never,
   );

@@ -10,6 +10,8 @@ import { PostsController } from './posts.controller';
 import { EntityExtractorService } from './entity-extractor.service';
 import { NoopPostsNotificationService } from './noop-posts-notification.service';
 import { POSTS_NOTIFICATION_PORT } from './posts-notification.port';
+import { NoopViewerFlagsService } from './noop-viewer-flags.service';
+import { VIEWER_FLAGS_PORT } from './viewer-flags.port';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
 
@@ -20,8 +22,14 @@ import { AuthModule } from '../auth/auth.module';
  *   - 'fanout' — triggers home-timeline fan-out (processor added in TimelineModule, Phase 5)
  *   - 'search' — triggers FTS index update (processor added in SearchModule, Phase 8)
  *
- * EngagementModule (Phase 4) will add the likes/bookmarks tables and fill in the
- * viewer flags (liked/reposted/bookmarked) that PostsService currently stubs as false.
+ * VIEWER_FLAGS_PORT defaults to NoopViewerFlagsService (all flags false).
+ * EngagementModule overrides this in AppModule by providing ViewerFlagsAdapter,
+ * which delegates to ViewerFlagsService (Redis sets + DB fallback).
+ *
+ * The override pattern: PostsService injects VIEWER_FLAGS_PORT; when EngagementModule
+ * is imported in AppModule after PostsModule, NestJS resolves the token to the last
+ * provider. To properly override, we use module-level re-export of the token and
+ * EngagementModule provides its adapter in AppModule scope.
  */
 @Module({
   imports: [
@@ -42,11 +50,16 @@ import { AuthModule } from '../auth/auth.module';
       provide: POSTS_NOTIFICATION_PORT,
       useClass: NoopPostsNotificationService,
     },
+    {
+      provide: VIEWER_FLAGS_PORT,
+      useClass: NoopViewerFlagsService,
+    },
   ],
   exports: [
     PostsService,
     EntityExtractorService,
     TypeOrmModule, // export entities for EngagementModule, TimelineModule, etc.
+    VIEWER_FLAGS_PORT, // exported so EngagementModule can override in consuming modules
   ],
 })
 export class PostsModule {}
