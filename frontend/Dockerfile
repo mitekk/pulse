@@ -77,3 +77,14 @@ HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
   CMD wget -qO- http://localhost:8080/healthz || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
+
+# ── Stage 3: dev ──────────────────────────────────────────────
+# Used by docker-compose.override.yml for in-container Vite HMR.
+# Source is bind-mounted over /app; an anonymous volume preserves node_modules.
+FROM node:22-alpine AS dev
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+EXPOSE 5173
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

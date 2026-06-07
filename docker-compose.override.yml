@@ -8,5 +8,21 @@ services:
     command: ["npx", "tsx", "watch", "src/main.ts"]
     environment:
       NODE_ENV: development
+      WEB_ORIGIN: http://localhost:5173
     ports:
       - "3000:3000"
+
+  # Dev frontend: Vite HMR in-container (overrides the prod nginx build).
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_PROXY_TARGET: http://backend:3000
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+    ports:
+      - "5173:5173"
