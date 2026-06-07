@@ -8,7 +8,7 @@ import { test, expect, chromium, type BrowserContext, type Page } from '@playwri
 import * as fs from 'fs'
 import * as path from 'path'
 import { HomePage } from './pages/HomePage'
-import { loginAndSetupRefreshIntercept } from './helpers/auth-helper'
+import { loginAndNavigateHome } from './helpers/auth-helper'
 
 function uniqueSuffix() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
@@ -34,7 +34,7 @@ test.describe('Post — compose and view', () => {
     sharedContext = await browser.newContext({ baseURL: BASE_URL })
     sharedPage = await sharedContext.newPage()
 
-    await loginAndSetupRefreshIntercept(sharedContext, sharedPage, postUser.email, password)
+    await loginAndNavigateHome(sharedContext, sharedPage, postUser.email, password)
   })
 
   test.afterAll(async () => {

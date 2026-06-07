@@ -1,14 +1,26 @@
 # E2E compose override — used by Playwright E2E tests only.
-# Overrides NODE_ENV to avoid SSL requirement on the local postgres.
+# Sets NODE_ENV=test so that auth cookies are NOT marked Secure.
+#
+# Why this is needed:
+#   Playwright E2E tests run against the stack over plain HTTP on localhost
+#   (http://localhost:18080). When NODE_ENV=production the backend sets the
+#   refresh_token and csrf_token cookies with the Secure flag, which requires
+#   HTTPS. Chromium's "localhost is a secure context" rule applies to JavaScript
+#   APIs (navigator.serviceWorker, etc.) but NOT to cookie delivery — the browser
+#   still drops Secure cookies that arrive over a non-HTTPS connection. As a
+#   result, the httpOnly refresh_token cookie is never stored, POST /auth/refresh
+#   returns MISSING_REFRESH_TOKEN, and useBootstrap redirects to /login on every
+#   page reload.
+#
+#   Setting NODE_ENV=test disables the Secure flag on cookies, allowing them to
+#   round-trip over plain HTTP in the test environment. SSL itself is no longer
+#   the reason for this override (DATABASE_SSL now defaults to false regardless
+#   of NODE_ENV).
 #
 # Usage (from repo root):
-#   FRONTEND_PORT=18080 \
+#   FRONTEND_PORT=18080 WEB_ORIGIN=http://localhost:18080 \
 #   JWT_ACCESS_SECRET=... JWT_REFRESH_SECRET=... \
 #     docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --wait
-#
-# This sets NODE_ENV=test on the backend so SSL is not required for the
-# local postgres (which does not have SSL configured).
-# Set FRONTEND_PORT=18080 (or any free port) in the shell to avoid conflicts.
 services:
   backend:
     environment:

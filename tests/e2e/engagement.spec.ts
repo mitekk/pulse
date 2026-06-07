@@ -7,7 +7,7 @@
 import { test, expect, chromium, type BrowserContext, type Page } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
-import { loginAndSetupRefreshIntercept } from './helpers/auth-helper'
+import { loginAndNavigateHome } from './helpers/auth-helper'
 
 function getCreds() {
   const credsFile = path.join(__dirname, '.auth', 'test-users.json')
@@ -30,12 +30,10 @@ test.describe('Engagement — like, repost, bookmark', () => {
     sharedContext = await browser.newContext({ baseURL: BASE_URL })
     sharedPage = await sharedContext.newPage()
 
-    await loginAndSetupRefreshIntercept(sharedContext, sharedPage, engUser.email, password)
+    await loginAndNavigateHome(sharedContext, sharedPage, engUser.email, password)
   })
 
   test.afterAll(async () => {
-    // Unroute all to ignore any in-flight requests before context close
-    await sharedPage.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {})
     await sharedContext.close()
   })
 
@@ -60,7 +58,7 @@ test.describe('Engagement — like, repost, bookmark', () => {
     await likeButton.click()
     await expect(likeButton).toHaveAttribute('aria-pressed', 'true', { timeout: 5_000 })
 
-    // Reload and verify persistence — page reload triggers useBootstrap → intercepted refresh
+    // Reload and verify persistence — page reload triggers useBootstrap → real /auth/refresh
     await page.reload()
     await page.waitForLoadState('networkidle')
 

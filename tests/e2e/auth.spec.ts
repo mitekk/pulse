@@ -63,6 +63,26 @@ test.describe('Auth — register → logout → login', () => {
     await expect(page.getByTestId('user-menu-trigger').last()).toBeVisible()
   })
 
+  test('session persists after page reload (BUG-4 regression guard)', async ({ page }) => {
+    // This test exercises the full in-memory-token → /auth/refresh (cookie + CSRF)
+    // → restored-session path. A failed refresh would redirect to /login.
+    const { password, authUser } = getCreds()
+    const loginPage = new LoginPage(page)
+    await loginPage.goto()
+    await loginPage.login(authUser.email, password)
+    await expect(page).toHaveURL('/')
+    await expect(page.getByTestId('compose-button-home')).toBeVisible({ timeout: 10_000 })
+
+    // Reload — clears the in-memory Zustand store; useBootstrap must re-hydrate via
+    // POST /auth/refresh using the httpOnly cookie + CSRF double-submit header.
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+
+    // If still on '/' with the compose button, the refresh succeeded.
+    await expect(page).toHaveURL('/')
+    await expect(page.getByTestId('compose-button-home')).toBeVisible({ timeout: 10_000 })
+  })
+
   test('full cycle: login with email → logout → login with handle', async ({ page }) => {
     const { password, authUser } = getCreds()
 

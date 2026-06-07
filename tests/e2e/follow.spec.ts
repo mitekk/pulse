@@ -8,7 +8,7 @@ import { test, expect, chromium, type BrowserContext, type Page } from '@playwri
 import * as fs from 'fs'
 import * as path from 'path'
 import { ProfilePage } from './pages/ProfilePage'
-import { loginAndSetupRefreshIntercept } from './helpers/auth-helper'
+import { loginAndNavigateHome } from './helpers/auth-helper'
 
 function getCreds() {
   const credsFile = path.join(__dirname, '.auth', 'test-users.json')
@@ -31,7 +31,7 @@ test.describe('Follow — A follows B, feed fan-out', () => {
     sharedContext = await browser.newContext({ baseURL: BASE_URL })
     sharedPage = await sharedContext.newPage()
 
-    await loginAndSetupRefreshIntercept(sharedContext, sharedPage, followA.email, password)
+    await loginAndNavigateHome(sharedContext, sharedPage, followA.email, password)
   })
 
   test.afterAll(async () => {
