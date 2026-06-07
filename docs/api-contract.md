@@ -77,18 +77,18 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| POST | `/api/v1/posts` | Yes | `{ text?: string, mediaIds?: string[], replyToId?: string, quoteOfId?: string, replyPolicy?: 'everyone'|'following'|'mentioned' }` | `{ post: PostDto }` 201 | planned |
-| GET | `/api/v1/posts/:id` | Optional | — | `{ post: PostDto }` | planned |
-| DELETE | `/api/v1/posts/:id` | Yes | — | 204 No Content (soft delete, tombstone in thread) | planned |
-| GET | `/api/v1/posts/:id/thread` | Optional | — | `{ ancestors: PostDto[], post: PostDto, replies: PostDto[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/posts/:id/replies` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/posts/:id/reposts` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/posts/:id/quotes` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | planned |
-| GET | `/api/v1/posts/:id/likes` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | planned |
+| POST | `/api/v1/posts` | Yes | `{ text?: string, mediaIds?: string[], replyToId?: string, quoteOfId?: string, replyPolicy?: 'everyone'|'following'|'mentioned' }` | `{ post: PostDto }` 201 | implemented |
+| GET | `/api/v1/posts/:id` | Optional | — | `{ post: PostDto }` | implemented |
+| DELETE | `/api/v1/posts/:id` | Yes | — | 204 No Content (soft delete, tombstone in thread) | implemented |
+| GET | `/api/v1/posts/:id/thread` | Optional | — | `{ ancestors: PostDto[], post: PostDto, replies: PostDto[], cursor: string, hasMore: boolean }` | implemented |
+| GET | `/api/v1/posts/:id/replies` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | implemented |
+| GET | `/api/v1/posts/:id/reposts` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | implemented |
+| GET | `/api/v1/posts/:id/quotes` | Optional | `?cursor=&limit=` | `{ items: PostDto[], cursor: string, hasMore: boolean }` | implemented |
+| GET | `/api/v1/posts/:id/likes` | Optional | `?cursor=&limit=` | `{ items: UserCardDto[], cursor: string, hasMore: boolean }` | changed — stub returning `[]`; full implementation in EngagementModule (subtask 5) |
 | POST | `/api/v1/posts/:id/like` | Yes | — | 201 `{ liked: true, count: number }` | planned |
 | DELETE | `/api/v1/posts/:id/like` | Yes | — | 200 `{ liked: false, count: number }` | planned |
-| POST | `/api/v1/posts/:id/repost` | Yes | — | 201 `{ reposted: true, count: number }` | planned |
-| DELETE | `/api/v1/posts/:id/repost` | Yes | — | 200 `{ reposted: false, count: number }` | planned |
+| POST | `/api/v1/posts/:id/repost` | Yes | — | 201 `{ reposted: true, count: number }` | implemented |
+| DELETE | `/api/v1/posts/:id/repost` | Yes | — | 200 `{ reposted: false, count: number }` | implemented |
 | POST | `/api/v1/posts/:id/bookmark` | Yes | — | 201 `{ bookmarked: true }` | planned |
 | DELETE | `/api/v1/posts/:id/bookmark` | Yes | — | 200 `{ bookmarked: false }` | planned |
 

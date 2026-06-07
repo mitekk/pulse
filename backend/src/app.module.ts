@@ -9,6 +9,7 @@ import { StorageModule } from './infra/storage/storage.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { PostsModule } from './modules/posts/posts.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -26,10 +27,10 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     HealthModule,
     AuthModule,
     UsersModule,
-    // Domain modules slot here in Phase 3+ subtasks:
-    // PostsModule, TimelineModule, EngagementModule,
-    // MediaModule, MessagingModule, NotificationsModule, SearchModule,
-    // HashtagsModule, RealtimeModule
+    PostsModule,
+    // Domain modules slot here in Phase 4+ subtasks:
+    // EngagementModule, TimelineModule, MediaModule, MessagingModule,
+    // NotificationsModule, SearchModule, HashtagsModule, RealtimeModule
   ],
   providers: [
     {
