@@ -1,0 +1,229 @@
+// ============================================================
+// React Router v6 route table
+// Modal routes use location.state.background pattern
+// ============================================================
+/* eslint-disable react-refresh/only-export-components */
+
+import React, { Suspense } from 'react'
+import { createBrowserRouter, Outlet } from 'react-router-dom'
+import { AppShell } from './AppShell'
+import { AuthGuard } from './AuthGuard'
+import { GuestGuard } from './GuestGuard'
+import { RouteErrorBoundary } from './RouteErrorBoundary'
+import { FullPageSpinner } from '@/components/FullPageSpinner'
+
+// ── Lazy-loaded auth pages ─────────────────────────────────
+const LoginPage = React.lazy(() => import('@/pages/LoginPage'))
+const RegisterPage = React.lazy(() => import('@/pages/RegisterPage'))
+const VerifyEmailPage = React.lazy(() => import('@/pages/VerifyEmailPage'))
+
+// ── Lazy-loaded placeholder pages ─────────────────────────
+const HomePage = React.lazy(() => import('@/pages/HomePage'))
+const ExplorePage = React.lazy(() => import('@/pages/ExplorePage'))
+const SearchPage = React.lazy(() => import('@/pages/SearchPage'))
+const NotificationsPage = React.lazy(() => import('@/pages/NotificationsPage'))
+const MessagesPage = React.lazy(() => import('@/pages/MessagesPage'))
+const ConversationPage = React.lazy(() => import('@/pages/ConversationPage'))
+const BookmarksPage = React.lazy(() => import('@/pages/BookmarksPage'))
+const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'))
+const ProfilePage = React.lazy(() => import('@/pages/ProfilePage'))
+const PostPage = React.lazy(() => import('@/pages/PostPage'))
+const PhotoPage = React.lazy(() => import('@/pages/PhotoPage'))
+
+// ── Modal routes (lazy) ────────────────────────────────────
+const ComposeModal = React.lazy(() => import('@/pages/ComposeModal'))
+const ComposeDmModal = React.lazy(() => import('@/pages/ComposeDmModal'))
+
+const LazyPage = ({ children }: { children: React.ReactNode }) => (
+  <Suspense fallback={<FullPageSpinner />}>{children}</Suspense>
+)
+
+export const router = createBrowserRouter([
+  // ── Auth routes (guest only) ───────────────────────────
+  {
+    element: (
+      <GuestGuard>
+        <LazyPage>
+          <Outlet />
+        </LazyPage>
+      </GuestGuard>
+    ),
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+    ],
+  },
+
+  // ── Verify email (no auth required) ───────────────────
+  {
+    path: '/verify-email',
+    element: (
+      <LazyPage>
+        <VerifyEmailPage />
+      </LazyPage>
+    ),
+    errorElement: <RouteErrorBoundary />,
+  },
+
+  // ── App shell (auth-protected) ─────────────────────────
+  {
+    element: (
+      <AuthGuard>
+        <AppShell />
+      </AuthGuard>
+    ),
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      {
+        path: '/',
+        element: (
+          <LazyPage>
+            <HomePage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/explore',
+        element: (
+          <LazyPage>
+            <ExplorePage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/search',
+        element: (
+          <LazyPage>
+            <SearchPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/notifications',
+        element: (
+          <LazyPage>
+            <NotificationsPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/messages',
+        element: (
+          <LazyPage>
+            <MessagesPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/messages/:id',
+        element: (
+          <LazyPage>
+            <ConversationPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/bookmarks',
+        element: (
+          <LazyPage>
+            <BookmarksPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/settings/*',
+        element: (
+          <LazyPage>
+            <SettingsPage />
+          </LazyPage>
+        ),
+      },
+      // ── Profile routes ──────────────────────────────────
+      {
+        path: '/:handle',
+        element: (
+          <LazyPage>
+            <ProfilePage tab="posts" />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/:handle/replies',
+        element: (
+          <LazyPage>
+            <ProfilePage tab="replies" />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/:handle/media',
+        element: (
+          <LazyPage>
+            <ProfilePage tab="media" />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/:handle/likes',
+        element: (
+          <LazyPage>
+            <ProfilePage tab="likes" />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/:handle/followers',
+        element: (
+          <LazyPage>
+            <ProfilePage tab="followers" />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/:handle/following',
+        element: (
+          <LazyPage>
+            <ProfilePage tab="following" />
+          </LazyPage>
+        ),
+      },
+      // ── Post / thread ───────────────────────────────────
+      {
+        path: '/:handle/status/:postId',
+        element: (
+          <LazyPage>
+            <PostPage />
+          </LazyPage>
+        ),
+      },
+      // ── Photo lightbox (modal route) ────────────────────
+      {
+        path: '/:handle/status/:postId/photo/:idx',
+        element: (
+          <LazyPage>
+            <PhotoPage />
+          </LazyPage>
+        ),
+      },
+
+      // ── Modal routes ────────────────────────────────────
+      {
+        path: '/compose',
+        element: (
+          <LazyPage>
+            <ComposeModal />
+          </LazyPage>
+        ),
+      },
+      {
+        path: '/compose/dm',
+        element: (
+          <LazyPage>
+            <ComposeDmModal />
+          </LazyPage>
+        ),
+      },
+    ],
+  },
+])
