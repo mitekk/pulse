@@ -8,6 +8,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { router } from './app/router'
 import { useBootstrap } from './lib/auth/useBootstrap'
 import { FullPageSpinner } from './components/FullPageSpinner'
+import { ToastProvider } from './components/Toast'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,8 +36,10 @@ function AppWithBootstrap() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppWithBootstrap />
-      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      <ToastProvider>
+        <AppWithBootstrap />
+        {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      </ToastProvider>
     </QueryClientProvider>
   )
 }

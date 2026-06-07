@@ -2,12 +2,12 @@
   "workflow": "scaffold",
   "schema_version": 1,
   "status": "blocked",
-  "last_completed_step": 1,
+  "last_completed_step": 3,
   "next_step": 2,
-  "updated_at": "2026-06-07T05:48:42Z",
-  "blockers": ["Parallel phase active: wait for both Step 2 and Step 3 completion commits."],
+  "updated_at": "2026-06-07T08:07:04Z",
+  "blockers": ["Step 3 (frontend) complete; Step 2 (backend) finishing: notifications + search/hardening remain."],
   "prd_version": "v1",
   "prd_path": "docs/prd/PRD-current.md",
-  "parallel_pending_steps": [2, 3],
-  "last_commit": "a147bfc"
+  "parallel_pending_steps": [2],
+  "last_commit": "f072317"
 }

@@ -366,6 +366,7 @@ export function PostCard({ post, noNavigate = false, embedded = false }: PostCar
 
             <button
               data-testid={`post-time-${post.id}`}
+              aria-label={`View post from ${new Date(post.createdAt).toLocaleString()}`}
               onClick={(e) => {
                 e.stopPropagation()
                 navigate(`/@${post.author.handle}/status/${post.id}`)
