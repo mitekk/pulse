@@ -104,6 +104,13 @@ export async function request<T>(
   if (accessToken) {
     headers.set('Authorization', `Bearer ${accessToken}`)
   }
+  // CSRF double-submit for the cookie-authenticated refresh route. This is the
+  // path used by the eager bootstrap refresh (authApi.refresh on app mount);
+  // the lazy 401-retry path (attemptRefresh) sets the same header itself.
+  if (path.startsWith('/auth/refresh') && !headers.has('X-CSRF-Token')) {
+    const csrfToken = readCsrfToken()
+    if (csrfToken) headers.set('X-CSRF-Token', csrfToken)
+  }
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
