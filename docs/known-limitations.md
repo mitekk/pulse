@@ -1,13 +1,15 @@
 # Known Limitations
 
-Current, accurate status of intentionally-incomplete areas, as of commit
-`6eee1bf` (smoke-test fix batch). This supersedes the per-subtask
-`docs/step-2-backend-subtask-*.md` build notes, which are historical and now
-partly outdated (notifications, trends, and viewer-flags were wired in `6eee1bf`).
+Current, accurate status of intentionally-incomplete areas. The two former seams
+below — media-attach (`MEDIA_ATTACH_PORT`) and real-time delivery
+(`REALTIME_PUBLISHER_PORT`) — are now **both wired and verified end-to-end** in the
+dockerized stack; they are kept here as ✅-resolved records (and supersede the
+per-subtask `docs/step-2-backend-subtask-*.md` build notes, which are historical
+and outdated). Notifications, trends, and viewer-flags were wired earlier in
+`6eee1bf`.
 
-These are **non-blocking** — the app builds, the stack is healthy, and all
-critical/high smoke-test findings are resolved. They are tracked here so they are
-not mistaken for bugs.
+The app builds, the stack is healthy, and all critical/high smoke-test findings are
+resolved.
 
 ---
 
@@ -30,23 +32,35 @@ not mistaken for bugs.
   ownership/status guards, real DI) and `tests/unit/media/media-attach.adapter.spec.ts`
   (Media→AttachedMediaItem mapping).
 
-## 2. Real-time delivery is not emitted (`REALTIME_PUBLISHER_PORT` = noop)
+## 2. Real-time delivery is emitted over WebSockets (`REALTIME_PUBLISHER_PORT` — ✅ WIRED)
 
-- **Status:** intentional seam, real implementation exists but unwired.
-- **User-facing impact:** notifications, DM messages, and "N new posts" timeline
-  pills are **persisted and fetchable over REST**, but are **not pushed live over
-  WebSockets**. Clients see them on refresh/refetch, not instantly. (The WS
-  gateway itself accepts connections — only the server→client publish is a noop.)
-- **Wiring:** `NotificationsModule`, `MessagingModule`, and `TimelineModule` each
-  bind `REALTIME_PUBLISHER_PORT` to a noop `useValue`.
-- **Real impl (exists):** `RealtimePublisherService`
-  (`backend/src/modules/realtime/realtime-publisher.service.ts`); `RealtimeModule`
-  and `RealtimeGateway` exist and `RealtimeModule` is already imported in
-  `app.module.ts`.
-- **Correct swap path:** bind `REALTIME_PUBLISHER_PORT` →
-  `RealtimePublisherService` in the three consuming modules (resolve from
-  `RealtimeModule`), minding cycles between `RealtimeModule` and those modules.
-  Verification needs a WS client, not just REST.
+- **Status:** ✅ wired. Notifications, DM messages, and "N new posts" timeline
+  pills are now pushed **live over WebSockets** (in addition to being persisted +
+  served over REST). Verified end-to-end in the dockerized stack: a follow
+  triggered `notification.new` on a connected Socket.IO client within ~200ms.
+- **Wiring:** `RealtimeModule` is now `@Global` and exports the single
+  `RealtimePublisherService` instance (the one `RealtimeGateway.afterInit()` calls
+  `setServer()` on). `NotificationsModule`, `MessagingModule`, and `TimelineModule`
+  each bind `REALTIME_PUBLISHER_PORT` via `useExisting: RealtimePublisherService`
+  (alias to that singleton — never `useClass`, which would create a second
+  io-less instance). The dead AppModule "override" provider was removed (it never
+  worked — see the NestJS-pattern note below). No module-import cycle was needed:
+  consumers resolve the publisher from the `@Global` export without importing
+  `RealtimeModule`.
+- **Required infra fix:** wiring the real publisher surfaced a latent Redis bug.
+  The dedicated pub/sub **subscriber** connection
+  (`backend/src/infra/redis/redis.service.ts`) was created with
+  `enableReadyCheck: true`; `RealtimePublisherService.onModuleInit()` calls
+  `subscribe()` before the ready-check `INFO` completes, which fails in subscriber
+  mode, reconnects, and silently drops the (untracked) subscriptions
+  (`PUBSUB NUMSUB notification:new` → 0, so every publish reached no one). Fixed by
+  setting `enableReadyCheck: false` on the subscriber connection (the `client`
+  connection is unchanged).
+- **Tests:** `tests/integration/wiring.test.ts` (DI asserts both ports resolve to
+  their real classes; pub/sub round-trip asserts `publishNotification` reaches the
+  `user:{id}` room over real Redis). The integration bootstrap
+  (`tests/integration/helpers/app.ts`) no longer overrides
+  `REALTIME_PUBLISHER_PORT`, so the suite exercises the real production wiring.
 
 ---
 

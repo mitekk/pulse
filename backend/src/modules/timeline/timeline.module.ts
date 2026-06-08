@@ -13,8 +13,8 @@ import { TimelineController } from './timeline.controller';
 import { FanoutProcessor } from './fanout.processor';
 import { TimelineTrimProcessor } from './timeline-trim.processor';
 import { PostCacheService } from './post-cache.service';
-import { NoopRealtimePublisherService } from './noop-realtime-publisher.service';
 import { REALTIME_PUBLISHER_PORT } from './realtime-publisher.port';
+import { RealtimePublisherService } from '../realtime/realtime-publisher.service';
 import { PostsModule } from '../posts/posts.module';
 import { UsersModule } from '../users/users.module';
 import { EngagementModule } from '../engagement/engagement.module';
@@ -31,11 +31,10 @@ import { AuthModule } from '../auth/auth.module';
  * here does NOT cause a double-registration conflict — BullMQ/BullModule
  * registers the queue once per process and the processor is added as a worker.
  *
- * REALTIME_PUBLISHER_PORT is bound to NoopRealtimePublisherService: timeline
- * "new posts" pills are computed but NOT pushed live over WS. This seam is
- * currently UNWIRED — see docs/known-limitations.md. The real impl is
- * RealtimePublisherService (RealtimeModule); enable it by binding the token here
- * (NOT via an "AppModule override", which does not work for module-scoped tokens).
+ * REALTIME_PUBLISHER_PORT is bound to the live RealtimePublisherService singleton
+ * via `useExisting`. RealtimeModule is `@Global`, so the singleton is resolvable
+ * here without importing RealtimeModule (which would create a cycle). Timeline
+ * "new posts" pills are now pushed live over WebSockets.
  *
  * Exports:
  *   - TimelineService, PostCacheService
@@ -59,7 +58,7 @@ import { AuthModule } from '../auth/auth.module';
     TimelineTrimProcessor,
     {
       provide: REALTIME_PUBLISHER_PORT,
-      useClass: NoopRealtimePublisherService,
+      useExisting: RealtimePublisherService,
     },
   ],
   exports: [TimelineService, PostCacheService, REALTIME_PUBLISHER_PORT],

@@ -14,6 +14,7 @@ import { POSTS_NOTIFICATION_PORT } from '../posts/posts-notification.port';
 import { NOTIFICATION_PORT } from '../users/notification.port';
 import { DM_NOTIFICATION_PORT } from '../messaging/dm-notification.port';
 import { REALTIME_PUBLISHER_PORT } from '../timeline/realtime-publisher.port';
+import { RealtimePublisherService } from '../realtime/realtime-publisher.service';
 
 /**
  * NotificationsModule — notification creation, delivery, and aggregation.
@@ -56,17 +57,11 @@ import { REALTIME_PUBLISHER_PORT } from '../timeline/realtime-publisher.port';
     { provide: POSTS_NOTIFICATION_PORT, useExisting: RealPostsNotificationService },
     { provide: NOTIFICATION_PORT, useExisting: RealNotificationService },
     { provide: DM_NOTIFICATION_PORT, useExisting: RealDmNotificationService },
-    // Noop REALTIME_PUBLISHER_PORT — notifications are persisted + served over
-    // REST but NOT pushed live over WS. Real impl: RealtimePublisherService
-    // (RealtimeModule). Currently unwired — see docs/known-limitations.md.
-    // (An "AppModule override" does not work for this module-scoped token.)
-    {
-      provide: REALTIME_PUBLISHER_PORT,
-      useValue: {
-        notifyNewTimelinePosts: async () => undefined,
-        publishNotification: async () => undefined,
-      },
-    },
+    // Wire REALTIME_PUBLISHER_PORT to the live singleton via useExisting.
+    // RealtimeModule is @Global so RealtimePublisherService is resolvable here
+    // without importing RealtimeModule (avoids a cycle). All published
+    // notifications are now pushed live over WebSockets.
+    { provide: REALTIME_PUBLISHER_PORT, useExisting: RealtimePublisherService },
   ],
   exports: [
     NotificationsService,

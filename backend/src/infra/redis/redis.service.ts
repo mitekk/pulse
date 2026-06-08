@@ -30,7 +30,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
     this._subscriber = new Redis(redisUrl, {
       maxRetriesPerRequest: null, // unlimited — subscriber must stay connected
-      enableReadyCheck: true,
+      // enableReadyCheck MUST be false on the subscriber connection.
+      // With it enabled, ioredis gates "ready" behind an INFO command.
+      // RealtimePublisherService.onModuleInit() calls subscriber.subscribe()
+      // before that INFO round-trip completes; the INFO then fails with
+      // "Connection in subscriber mode, only subscriber commands may be used",
+      // ioredis reconnects, and — critically — the early SUBSCRIBE is NOT
+      // tracked for auto-resubscribe. Result: PUBSUB NUMSUB → 0, every
+      // client.publish() reaches no one, and all live push events are silently
+      // dropped. Setting false makes the connection ready immediately on
+      // connect, so the SUBSCRIBE is registered and survives reconnects.
+      enableReadyCheck: false,
       lazyConnect: false,
     });
 

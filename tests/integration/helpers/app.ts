@@ -66,8 +66,6 @@ import { ReportsModule } from '../../../backend/src/modules/reports/reports.modu
 import { AllExceptionsFilter } from '../../../backend/src/common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from '../../../backend/src/common/interceptors/logging.interceptor';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
-import { REALTIME_PUBLISHER_PORT } from '../../../backend/src/modules/timeline/realtime-publisher.port';
-import { RealtimePublisherService } from '../../../backend/src/modules/realtime/realtime-publisher.service';
 import { NOTIFICATION_PORT } from '../../../backend/src/modules/users/notification.port';
 import { POSTS_NOTIFICATION_PORT } from '../../../backend/src/modules/posts/posts-notification.port';
 import { DM_NOTIFICATION_PORT } from '../../../backend/src/modules/messaging/dm-notification.port';
@@ -186,9 +184,6 @@ export async function getApp(): Promise<NestFastifyApplication> {
   // TRENDS_INCREMENT_PORT: PostsModule defaults to NoopTrendsIncrementService → use TrendsService
   .overrideProvider(TRENDS_INCREMENT_PORT)
   .useClass(TrendsService)
-  // REALTIME_PUBLISHER_PORT: TimelineModule defaults to NoopRealtimePublisherService → use RealtimePublisherService
-  .overrideProvider(REALTIME_PUBLISHER_PORT)
-  .useClass(RealtimePublisherService)
   // VIEWER_FLAGS_PORT: PostsModule defaults to NoopViewerFlagsService → use ViewerFlagsAdapter
   .overrideProvider(VIEWER_FLAGS_PORT)
   .useClass(ViewerFlagsAdapter)

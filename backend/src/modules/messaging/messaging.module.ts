@@ -9,6 +9,7 @@ import { Message } from './message.entity';
 import { MessagingService } from './messaging.service';
 import { MessagingController } from './messaging.controller';
 import { REALTIME_PUBLISHER_PORT } from '../timeline/realtime-publisher.port';
+import { RealtimePublisherService } from '../realtime/realtime-publisher.service';
 import { User } from '../users/user.entity';
 import { Follow } from '../users/follow.entity';
 import { Block } from '../users/block.entity';
@@ -42,19 +43,11 @@ import { Block } from '../users/block.entity';
     MessagingService,
     // DM_NOTIFICATION_PORT resolves from the @Global NotificationsModule
     // (RealDmNotificationService) — no local binding needed.
-    // Noop REALTIME_PUBLISHER_PORT — DM messages are persisted + served over REST
-    // but NOT pushed live over WS. Real impl: RealtimePublisherService
-    // (RealtimeModule). Currently unwired — see docs/known-limitations.md.
-    // (An "AppModule override" does not work for this module-scoped token.)
-    {
-      provide: REALTIME_PUBLISHER_PORT,
-      useValue: {
-        notifyNewTimelinePosts: async () => undefined,
-        publishNotification: async () => undefined,
-        publishDmMessage: async () => undefined,
-        publishDmRead: async () => undefined,
-      },
-    },
+    // Wire REALTIME_PUBLISHER_PORT to the live singleton via useExisting.
+    // RealtimeModule is @Global so RealtimePublisherService is resolvable here
+    // without importing RealtimeModule (avoids a cycle). DM messages and read
+    // receipts are now pushed live over WebSockets.
+    { provide: REALTIME_PUBLISHER_PORT, useExisting: RealtimePublisherService },
   ],
   exports: [MessagingService],
 })
