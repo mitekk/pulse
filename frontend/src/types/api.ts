@@ -79,8 +79,11 @@ export interface ProfileDto {
 // ── Session DTO ───────────────────────────────────────────
 export interface SessionDto {
   id: string
-  userAgent: string
-  ip: string
+  // Nullable in the API (session.entity: `string | null`) — clients without a
+  // UA / IP header produce null. The frontend previously typed these as
+  // non-null `string`, which let SessionItem call `.includes` on null and crash.
+  userAgent: string | null
+  ip: string | null
   createdAt: string
   expiresAt: string
   isCurrent: boolean

@@ -13,6 +13,11 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './tests/e2e',
 
+  // The UI walkthrough tour (tests/e2e/tour) is a separate, manually-invoked
+  // suite with its own config (playwright.tour.config.ts). Exclude it here so
+  // CI and `make test-e2e` only run the original specs.
+  testIgnore: '**/tour/**',
+
   // Flush Redis before each run to reset auth rate-limit counters
   globalSetup: './tests/e2e/global-setup.ts',
 

@@ -50,6 +50,7 @@ minio-data/
 
 # Playwright E2E runtime artifacts (regenerated per run)
 tests/e2e/.auth/
+tests/e2e/tour/.auth/
 playwright-report/
 test-results/
 tests/node_modules

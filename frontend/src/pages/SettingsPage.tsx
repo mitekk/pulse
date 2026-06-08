@@ -450,7 +450,10 @@ function AccountSettings() {
 
 // ── Session item ──────────────────────────────────────────────
 function SessionItem({ session, onRevoke }: { session: SessionDto; onRevoke: (id: string) => void }) {
-  const ua = session.userAgent
+  // userAgent can be null for sessions created without a UA header (e.g. API
+  // clients). Default to '' so the parsing below stays a no-op instead of
+  // throwing "Cannot read properties of null (reading 'includes')".
+  const ua = session.userAgent ?? ''
   // Simplified UA parsing
   let device = 'Unknown device'
   if (ua.includes('iPhone') || ua.includes('Android')) device = 'Mobile'

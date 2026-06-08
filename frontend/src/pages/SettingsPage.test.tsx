@@ -303,6 +303,21 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('session-item-session-2')).toBeInTheDocument()
   })
 
+  it('renders sessions with a null userAgent/ip without crashing', async () => {
+    // Regression: the API returns userAgent/ip as `string | null` (a client with
+    // no UA header yields null). SessionItem used to call `null.includes(...)`,
+    // crashing the whole page into the error boundary. Caught by the UI tour.
+    mockGetSessions.mockResolvedValue({
+      items: [makeSession({ id: 'no-ua', userAgent: null, ip: null })],
+      cursor: null,
+      hasMore: false,
+    })
+
+    setup('/settings/sessions')
+    await screen.findByTestId('sessions-settings')
+    expect(screen.getByTestId('session-item-no-ua')).toBeInTheDocument()
+  })
+
   it('marks current session', async () => {
     mockGetSessions.mockResolvedValue({
       items: [makeSession({ isCurrent: true })],

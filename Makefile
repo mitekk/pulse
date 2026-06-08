@@ -5,7 +5,7 @@
 
 .DEFAULT_GOAL := help
 .PHONY: help install dev up down logs build lint typecheck test \
-        test-integration test-e2e migrate migrate-generate clean verify ship
+        test-integration test-e2e test-tour migrate migrate-generate clean verify ship
 
 # ── CI-parity knobs (keep in sync with .github/workflows/ci.yml) ──────────────
 # Pinned Node version — single source of truth is .nvmrc; exported so every
@@ -70,6 +70,15 @@ test-e2e: ## Full dockerized Playwright E2E (mirrors the CI e2e job)
 	  npx typeorm migration:run -d dist/infra/database/data-source.js
 	PLAYWRIGHT_BASE_URL=$(WEB_ORIGIN) npx playwright test
 	$(COMPOSE) $(E2E_FILES) down -v
+
+test-tour: ## Manual UI walkthrough — drives every page/control via Playwright (NOT in CI)
+	FRONTEND_PORT=$(FRONTEND_PORT) WEB_ORIGIN=$(WEB_ORIGIN) \
+	JWT_ACCESS_SECRET=$(JWT_ACCESS_SECRET) JWT_REFRESH_SECRET=$(JWT_REFRESH_SECRET) \
+	  $(COMPOSE) $(E2E_FILES) up -d --build --wait
+	docker exec -w /app/backend $(BACKEND_CONTAINER) \
+	  npx typeorm migration:run -d dist/infra/database/data-source.js
+	PLAYWRIGHT_BASE_URL=$(WEB_ORIGIN) npx playwright test --config=playwright.tour.config.ts
+	@echo "Tour finished — stack left UP for inspection. Tear down with: make down"
 
 migrate: ## Run TypeORM migrations against the local dev DB
 	cd backend && npm run migration:run
