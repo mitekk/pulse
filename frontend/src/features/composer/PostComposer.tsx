@@ -25,7 +25,7 @@ import { queryKeys } from '@/lib/cache/queryKeys'
 import { useComposerStore } from '@/lib/stores/composerStore'
 import { useTimelineBufferStore } from '@/lib/stores/timelineBufferStore'
 import { countChars, CHAR_LIMIT } from '@/lib/composer/charCounter'
-import { useMediaUpload } from '@/hooks/useMediaUpload'
+import { useMediaUpload, MAX_FILES_PER_POST } from '@/hooks/useMediaUpload'
 import { useMentionAutocomplete } from './useMentionAutocomplete'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore, selectUser } from '@/lib/auth/store'
@@ -874,14 +874,17 @@ export function PostComposer({
               data-testid="attach-media-button"
               aria-label="Attach media"
               onClick={() => fileInputRef.current?.click()}
-              disabled={attachments.length >= 4}
+              disabled={attachments.length >= MAX_FILES_PER_POST}
               style={{
                 padding: '6px',
                 borderRadius: 'var(--radius-full)',
-                color: attachments.length >= 4 ? 'var(--color-text-dimmed)' : 'var(--color-accent)',
+                color:
+                  attachments.length >= MAX_FILES_PER_POST
+                    ? 'var(--color-text-dimmed)'
+                    : 'var(--color-accent)',
                 background: 'transparent',
                 border: 'none',
-                cursor: attachments.length >= 4 ? 'not-allowed' : 'pointer',
+                cursor: attachments.length >= MAX_FILES_PER_POST ? 'not-allowed' : 'pointer',
               }}
             >
               <ImageIcon />
@@ -890,7 +893,7 @@ export function PostComposer({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm"
+              accept="image/jpeg,image/png,image/gif,image/webp"
               multiple
               style={{ display: 'none' }}
               aria-hidden="true"

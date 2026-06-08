@@ -3,8 +3,10 @@
 // Renders images from PostDtos as a 3-column grid
 // ============================================================
 
+import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { PostDto, PostMediaDto } from '@/types/api'
+import { MediaProcessing, MediaUnavailable } from '@/components/MediaPlaceholder'
 
 interface ProfileMediaGridProps {
   posts: PostDto[]
@@ -23,12 +25,35 @@ function MediaThumb({
 }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const [loadFailed, setLoadFailed] = useState(false)
   const thumb = media.variants.thumb ?? media.variants.small ?? media.variants.medium
 
   const handleClick = () => {
     navigate(`/@${authorHandle}/status/${postId}/photo/${mediaIndex + 1}`, {
       state: { background: location },
     })
+  }
+
+  const squareSlot = { aspectRatio: '1/1', borderRadius: 'var(--radius-sm)' }
+
+  // ── Status / load placeholders ────────────────────────────
+  if (media.status === 'pending' || media.status === 'processing') {
+    return (
+      <MediaProcessing
+        compact
+        testId={`media-thumb-${postId}-${mediaIndex}`}
+        style={squareSlot}
+      />
+    )
+  }
+  if (media.status === 'failed' || loadFailed) {
+    return (
+      <MediaUnavailable
+        compact
+        testId={`media-thumb-${postId}-${mediaIndex}`}
+        style={squareSlot}
+      />
+    )
   }
 
   if (media.type === 'video') {
@@ -50,6 +75,7 @@ function MediaThumb({
             src={media.variants.poster}
             alt={media.altText ?? ''}
             loading="lazy"
+            onError={() => setLoadFailed(true)}
             width={media.width ?? 200}
             height={media.height ?? 200}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
@@ -74,7 +100,15 @@ function MediaThumb({
     )
   }
 
-  if (!thumb) return null
+  if (!thumb) {
+    return (
+      <MediaUnavailable
+        compact
+        testId={`media-thumb-${postId}-${mediaIndex}`}
+        style={squareSlot}
+      />
+    )
+  }
 
   return (
     <button
@@ -97,6 +131,7 @@ function MediaThumb({
         src={thumb}
         alt={media.altText ?? ''}
         loading="lazy"
+        onError={() => setLoadFailed(true)}
         width={media.width ?? 200}
         height={media.height ?? 200}
         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

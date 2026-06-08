@@ -3,7 +3,7 @@
 // ============================================================
 
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { MediaGrid } from './MediaGrid'
 import type { PostMediaDto } from '@/types/api'
@@ -12,6 +12,7 @@ function makeImage(id: string): PostMediaDto {
   return {
     id,
     type: 'image',
+    status: 'ready',
     variants: { thumb: `https://cdn.example.com/${id}-thumb.jpg`, small: `https://cdn.example.com/${id}.jpg` },
     altText: `Alt for ${id}`,
     width: 800,
@@ -64,6 +65,7 @@ describe('MediaGrid', () => {
     const gif: PostMediaDto = {
       id: 'g1',
       type: 'gif',
+      status: 'ready',
       variants: { mp4: 'https://cdn.example.com/g1.mp4', thumb: 'https://cdn.example.com/g1-thumb.jpg' },
       altText: null,
       width: 480,
@@ -77,6 +79,7 @@ describe('MediaGrid', () => {
     const video: PostMediaDto = {
       id: 'v1',
       type: 'video',
+      status: 'ready',
       variants: { mp4: 'https://cdn.example.com/v1.mp4', poster: 'https://cdn.example.com/v1-poster.jpg' },
       altText: 'My video',
       width: 1280,
@@ -84,5 +87,29 @@ describe('MediaGrid', () => {
     }
     setup([video])
     expect(document.querySelector('video')).toBeInTheDocument()
+  })
+
+  // ── Status-aware placeholders ──────────────────────────────
+
+  it('renders a processing placeholder while media is not ready', () => {
+    const processing: PostMediaDto = { ...makeImage('m1'), status: 'processing' }
+    setup([processing])
+    expect(screen.getByTestId('media-item-0')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: /processing/i })).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'Alt for m1' })).not.toBeInTheDocument()
+  })
+
+  it('renders an unavailable placeholder for failed media', () => {
+    const failed: PostMediaDto = { ...makeImage('m1'), status: 'failed' }
+    setup([failed])
+    const slot = screen.getByTestId('media-item-0')
+    expect(slot).toHaveAttribute('aria-label', 'Media unavailable')
+  })
+
+  it('swaps a ready image to the unavailable placeholder when it fails to load', () => {
+    setup([makeImage('m1')])
+    const img = screen.getByRole('img', { name: 'Alt for m1' })
+    fireEvent.error(img)
+    expect(screen.getByTestId('media-item-0')).toHaveAttribute('aria-label', 'Media unavailable')
   })
 })

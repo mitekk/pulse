@@ -1,10 +1,15 @@
 // ============================================================
 // MediaGrid — renders PostDto.media in 1/2/3/4 image layouts
 // Click opens lightbox route (3b); inline video/GIF player.
+//
+// Status-aware: media that isn't 'ready' (or whose object 404s on
+// load) renders a placeholder instead of a broken image.
 // ============================================================
 
+import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { PostMediaDto } from '@/types/api'
+import { MediaProcessing, MediaUnavailable } from './MediaPlaceholder'
 
 interface MediaGridProps {
   media: PostMediaDto[]
@@ -49,11 +54,31 @@ function MediaItem({
 }) {
   const navigate = useNavigate()
   const location = useLocation()
+  // Tracks an object that 404s / fails to decode despite a 'ready' status.
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const handleImageClick = () => {
     navigate(`/@${authorHandle}/status/${postId}/photo/${index}`, {
       state: { background: location },
     })
+  }
+
+  // ── Status / load placeholders (apply to every media type) ─
+  if (item.status === 'pending' || item.status === 'processing') {
+    return (
+      <MediaProcessing
+        testId={`media-item-${index}`}
+        style={{ ...slotStyle, borderRadius: 'var(--radius-md)' }}
+      />
+    )
+  }
+  if (item.status === 'failed' || loadFailed) {
+    return (
+      <MediaUnavailable
+        testId={`media-item-${index}`}
+        style={{ ...slotStyle, borderRadius: 'var(--radius-md)' }}
+      />
+    )
   }
 
   const srcSmall = item.variants.small ?? item.variants.medium ?? item.variants.large
@@ -81,20 +106,7 @@ function MediaItem({
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         ) : (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              background: 'var(--color-surface)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-text-muted)',
-              fontSize: 'var(--text-sm)',
-            }}
-          >
-            Video unavailable
-          </div>
+          <MediaUnavailable style={{ borderRadius: 0 }} />
         )}
       </div>
     )
@@ -125,11 +137,14 @@ function MediaItem({
             src={thumb}
             alt={altText || `GIF ${index + 1} of ${total}`}
             loading="lazy"
+            onError={() => setLoadFailed(true)}
             width={item.width ?? undefined}
             height={item.height ?? undefined}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
-        ) : null}
+        ) : (
+          <MediaUnavailable style={{ borderRadius: 0 }} />
+        )}
         {/* GIF badge */}
         <div
           style={{
@@ -155,6 +170,16 @@ function MediaItem({
   // ── Image ─────────────────────────────────────────────────
   const displaySrc = total === 1 ? (srcMedium ?? srcSmall) : srcSmall
 
+  // No variant URL at all → unavailable (nothing to fetch).
+  if (!displaySrc) {
+    return (
+      <MediaUnavailable
+        testId={`media-item-${index}`}
+        style={{ ...slotStyle, borderRadius: 'var(--radius-md)' }}
+      />
+    )
+  }
+
   return (
     <button
       data-testid={`media-item-${index}`}
@@ -175,6 +200,7 @@ function MediaItem({
         src={displaySrc}
         alt={altText}
         loading="lazy"
+        onError={() => setLoadFailed(true)}
         width={item.width ?? undefined}
         height={item.height ?? undefined}
         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

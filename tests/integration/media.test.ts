@@ -69,25 +69,51 @@ describe('POST /api/v1/media/upload-url', () => {
       .expect(400);
   });
 
-  it('when MinIO is available: returns mediaId and uploadUrl', async () => {
-    // This test only asserts the contract shape if MinIO is configured.
-    // In CI without MinIO, the storage service may throw; we catch and skip.
+  it('returns 413 FILE_TOO_LARGE when the declared size exceeds the per-file limit', async () => {
     const alice = await createUser(app);
 
     const res = await http
       .post('/api/v1/media/upload-url')
       .set('Authorization', bearerHeader(alice))
-      .send({ type: 'image', mime: 'image/jpeg', size: 102400 });
+      .send({ type: 'image', mime: 'image/jpeg', size: 2 * 1024 * 1024 }); // 2 MB > 1 MB/file
 
-    if (res.status === 201) {
-      // MinIO is available — validate shape
-      expect(res.body.mediaId).toBeTruthy();
-      expect(res.body.uploadUrl).toBeTruthy();
-      expect(typeof res.body.uploadUrl).toBe('string');
-    } else {
-      // MinIO not available — expect a server error, not a validation error
-      expect([500, 503]).toContain(res.status);
-    }
+    expect(res.status).toBe(413);
+    expect(res.body.error?.code).toBe('FILE_TOO_LARGE');
+  });
+
+  it('returns 400 VIDEO_NOT_SUPPORTED for a video upload (deferred)', async () => {
+    const alice = await createUser(app);
+
+    const res = await http
+      .post('/api/v1/media/upload-url')
+      .set('Authorization', bearerHeader(alice))
+      .send({ type: 'video', mime: 'video/mp4', size: 1024 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error?.code).toBe('VIDEO_NOT_SUPPORTED');
+  });
+
+  it('returns a presigned POST { mediaId, upload: { url, fields } } for a valid image', async () => {
+    // Presigning is local computation (no network), so this is deterministic
+    // even without a running MinIO. The reserve step exercises the real
+    // storage_usage counter created by the accounting migration.
+    const alice = await createUser(app);
+
+    const res = await http
+      .post('/api/v1/media/upload-url')
+      .set('Authorization', bearerHeader(alice))
+      .send({ type: 'image', mime: 'image/jpeg', size: 102400 })
+      .expect(201);
+
+    expect(res.body.mediaId).toBeTruthy();
+    expect(res.body.upload).toBeTruthy();
+    expect(typeof res.body.upload.url).toBe('string');
+    expect(res.body.upload.fields).toBeTruthy();
+    // The POST policy must pin the exact object key + content-type at the edge.
+    expect(res.body.upload.fields.key).toContain(`media/${alice.id}/`);
+    expect(res.body.upload.fields['Content-Type']).toBe('image/jpeg');
+    // The uploadUrl field from the old PUT flow is gone.
+    expect(res.body.uploadUrl).toBeUndefined();
   });
 });
 

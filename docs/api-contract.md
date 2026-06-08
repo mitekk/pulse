@@ -108,7 +108,7 @@
 
 | Method | Path | Auth? | Request Body | Response Body | Status |
 |--------|------|-------|--------------|---------------|--------|
-| POST | `/api/v1/media/upload-url` | Yes | `{ type: 'image'|'gif'|'video', mime: string, size: number }` | `{ mediaId: string, uploadUrl: string }` 201 | implemented |
+| POST | `/api/v1/media/upload-url` | Yes | `{ type: 'image'\|'gif'\|'video', mime: string, size: number }` | `{ mediaId: string, upload: { url: string, fields: Record<string,string> } }` 201 — presigned **POST** (multipart; file last). 413 `FILE_TOO_LARGE`, 400 `INVALID_MIME_TYPE`/`VIDEO_NOT_SUPPORTED`, 507 `STORAGE_CAP_EXCEEDED` | implemented |
 | POST | `/api/v1/media/:id/finalize` | Yes | — | `{ media: MediaDto }` 200 | implemented |
 | GET | `/api/v1/media/:id` | Yes | — | `{ media: MediaDto }` | implemented |
 | PATCH | `/api/v1/media/:id` | Yes | `{ altText: string }` | `{ media: MediaDto }` | implemented |

@@ -27,6 +27,7 @@ function makePost(mediaCount = 2): PostDto {
   const media = Array.from({ length: mediaCount }, (_, i) => ({
     id: `m${i}`,
     type: 'image' as const,
+    status: 'ready' as const,
     variants: {
       large: `https://cdn.example.com/large-${i}.jpg`,
       thumb: `https://cdn.example.com/thumb-${i}.jpg`,

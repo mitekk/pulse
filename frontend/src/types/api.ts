@@ -116,6 +116,8 @@ export interface MediaVariants {
 export interface PostMediaDto {
   id: string
   type: 'image' | 'gif' | 'video'
+  /** Processing lifecycle — the client renders a placeholder when not 'ready'. */
+  status: 'pending' | 'processing' | 'ready' | 'failed'
   variants: MediaVariants
   altText: string | null
   width: number | null

@@ -161,6 +161,7 @@ describe('PostCard', () => {
         {
           id: 'm1',
           type: 'image',
+          status: 'ready',
           variants: { small: 'https://example.com/img.jpg' },
           altText: 'A cat',
           width: 800,
