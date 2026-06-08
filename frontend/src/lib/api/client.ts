@@ -118,7 +118,17 @@ export async function request<T>(
     credentials: 'include',
   })
 
-  if (res.status === 401 && !isRetry && tokenStore) {
+  // A 401 from the public auth endpoints themselves (refresh/login/register) is a
+  // normal auth failure — logged out or bad credentials — NOT an expired-access-token
+  // case. Never try to refresh (you can't refresh a refresh) and never hard-redirect:
+  // doing so turns the bootstrap refresh on /login into a redirect→reload loop. Let the
+  // caller handle it (the bootstrap simply shows the login form).
+  const isAuthRoute =
+    path.startsWith('/auth/refresh') ||
+    path.startsWith('/auth/login') ||
+    path.startsWith('/auth/register')
+
+  if (res.status === 401 && !isRetry && tokenStore && !isAuthRoute) {
     // Try to refresh
     if (isRefreshing) {
       // Queue this request until refresh completes

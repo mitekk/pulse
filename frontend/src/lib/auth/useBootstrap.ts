@@ -12,6 +12,7 @@ export function useBootstrap(): boolean {
   const isInitialized = useAuthStore((s) => s.isInitialized)
   const setInitialized = useAuthStore((s) => s.setInitialized)
   const setAuth = useAuthStore((s) => s.setAuth)
+  const setAccessToken = useAuthStore((s) => s.setAccessToken)
 
   useEffect(() => {
     let cancelled = false
@@ -19,11 +20,15 @@ export function useBootstrap(): boolean {
     async function bootstrap() {
       try {
         const { accessToken } = await authApi.refresh()
+        if (cancelled) return
+        // Make the fresh token available to the API client BEFORE calling a
+        // protected route. Otherwise me() is sent with no Authorization header,
+        // 401s, and triggers an unnecessary second refresh (rotation churn) whose
+        // rotated token would then be clobbered by the stale setAuth() below.
+        setAccessToken(accessToken)
+        const { user } = await authApi.me()
         if (!cancelled) {
-          const { user } = await authApi.me()
-          if (!cancelled) {
-            setAuth(accessToken, user)
-          }
+          setAuth(accessToken, user)
         }
       } catch {
         // Refresh cookie absent or expired — user is logged out, this is expected
@@ -39,7 +44,7 @@ export function useBootstrap(): boolean {
     return () => {
       cancelled = true
     }
-  }, [setAuth, setInitialized])
+  }, [setAuth, setAccessToken, setInitialized])
 
   return isInitialized
 }
