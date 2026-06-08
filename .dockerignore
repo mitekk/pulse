@@ -1,0 +1,46 @@
+# Root build context is the whole repo (workspace-aware Docker builds).
+# Keep it lean: never ship host installs, build output, caches, or secrets.
+
+# Dependencies (images run their own `npm ci`)
+**/node_modules
+
+# Build output
+**/dist
+**/build
+*.tsbuildinfo
+
+# Turborepo cache
+**/.turbo
+
+# VCS / CI
+.git
+.github
+
+# Test & coverage artifacts
+**/coverage
+**/coverage-*
+playwright-report
+test-results
+blob-report
+.nyc_output
+tests/e2e/.auth
+
+# Local data volumes
+pgdata
+redis-data
+minio-data
+
+# Env / secrets (build args supply what images need; never bake real env files)
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.idea
+.vscode
+*.swp
+*.log
+
+# Local planning / docs not needed in images
+docs

@@ -14,7 +14,12 @@ direct messages, notifications, search/hashtags/trends — all real-time over We
 ## Prerequisites
 
 - Docker + Docker Compose
-- Node.js 22+ (only for running tests / dev outside Docker)
+- Node.js 24+ and npm 10+ (only for running tests / Turbo / dev outside Docker)
+
+This is an **npm-workspaces + Turborepo** monorepo (`frontend`, `backend`, and the root e2e package)
+with a **single root `package-lock.json`**. Install once at the root; run `make help` for all tasks.
+To change a dependency, edit that package's `package.json` and run `npm install` at the root to refresh
+the single lockfile.
 
 ## Quick start (full stack)
 
@@ -38,19 +43,20 @@ Open **http://localhost:8080**, register an account, and post.
 `docker compose up` automatically loads [docker-compose.override.yml](docker-compose.override.yml),
 which runs both apps with hot reload — **no rebuild on code change**:
 
-- **Backend** — `tsx watch` on a `./backend/src` volume mount (port 3000).
+- **Backend** — `nest start --watch` on a `./backend/src` volume mount (port 3000).
 - **Frontend** — Vite dev server with HMR (port **5173**), proxying `/api` + `/socket.io` to the backend container.
 
 ```bash
-docker compose up            # dev: backend hot reload + Vite HMR at http://localhost:5173
+make dev                     # = docker compose up --build (backend hot reload + Vite HMR at :5173)
 docker compose -f docker-compose.yml up --build   # prod-like: nginx frontend at http://localhost:8080
 ```
 
-Or run a package directly on the host:
+Or run on the host (install once at the root, then start each package):
 
 ```bash
-cd backend  && npm install && npm run dev    # http://localhost:3000
-cd frontend && npm install && npm run dev    # http://localhost:5173 (proxies to localhost:3000)
+npm install                  # installs all workspaces (single root lockfile)
+npm run dev -w backend       # http://localhost:3000
+npm run dev -w frontend      # http://localhost:5173 (proxies to localhost:3000)
 ```
 
 ## Environment variables
@@ -75,18 +81,20 @@ Email verification logs the token to the backend console in dev (no SMTP require
 ## Running tests
 
 ```bash
-# Backend — unit + integration (Vitest), with coverage
-cd backend  && npm test            # npm run test:coverage for the coverage report
+# All packages via Turborepo (run from the repo root)
+make test                # unit tests, all packages   (= turbo run test)
+make lint                # = turbo run lint
+make typecheck           # = turbo run typecheck
 
-# Frontend — unit/component (Vitest + Testing Library)
-cd frontend && npm test            # npm run test:coverage
+# Backend integration tests (host-run vs dockerized db/redis on 5433/6380)
+make test-integration
 
-# Type + lint gates (both packages)
-npm run typecheck && npm run lint
+# End-to-end (Playwright) against the dockerized stack
+make test-e2e            # boots the stack, runs migrations, runs Playwright, tears down
 
-# End-to-end (Playwright) — runs against the dockerized stack
-docker compose up -d --wait
-npx playwright test
+# Per-package, if you prefer:
+npm run test -w backend            # npm run test:coverage -w backend for coverage
+npm run test -w frontend
 ```
 
 ## Migrations

@@ -6,45 +6,31 @@ on:
   pull_request:
     branches: [main, master]
 
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
 jobs:
-  # ── 1. Lint + typecheck ─────────────────────────────────────────────────────
+  # ── 1. Lint + typecheck (Turbo, all workspaces) ─────────────────────────────
   lint:
     name: Lint & Typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # Backend
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - name: Install backend deps
-        working-directory: backend
+      - name: Install workspace deps
         run: npm ci
-      - name: Lint backend
-        working-directory: backend
-        run: npm run lint
-      - name: Typecheck backend
-        working-directory: backend
-        run: npm run typecheck
-
-      # Frontend
-      - uses: actions/setup-node@v4
+      - name: Restore Turbo cache
+        uses: actions/cache@v4
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install frontend deps
-        working-directory: frontend
-        run: npm ci
-      - name: Lint frontend
-        working-directory: frontend
-        run: npm run lint
-      - name: Typecheck frontend
-        working-directory: frontend
-        run: npm run typecheck
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+      - name: Lint + typecheck
+        run: npx turbo run lint typecheck
 
   # ── 2. Unit tests (fast feedback, no DB required) ───────────────────────────
   unit-test:
@@ -53,32 +39,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # Backend unit tests (no coverage threshold here — gate is on combined in integration-test)
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - name: Install backend deps
-        working-directory: backend
+      - name: Install workspace deps
         run: npm ci
-      - name: Backend unit tests
-        working-directory: backend
-        run: npm run test
-
-      # Frontend unit tests
-      - uses: actions/setup-node@v4
+      - name: Restore Turbo cache
+        uses: actions/cache@v4
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install frontend deps
-        working-directory: frontend
-        run: npm ci
-      - name: Frontend unit tests with coverage
-        working-directory: frontend
-        run: npm run test:coverage
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+      - name: Unit tests (all packages)
+        run: npx turbo run test
+      - name: Frontend unit coverage
+        run: npx turbo run test:coverage --filter=frontend
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -117,15 +94,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install backend deps
-        working-directory: backend
+      - name: Install workspace deps
         run: npm ci
 
       # Create the test DB and apply migrations
@@ -174,7 +147,6 @@ jobs:
           MINIO_SECRET_KEY: minioadmin
           JWT_ACCESS_SECRET: ci_integration_access_secret
           JWT_REFRESH_SECRET: ci_integration_refresh_secret
-          NODE_PATH: ./node_modules
         run: npm run test:coverage:combined
       - uses: actions/upload-artifact@v4
         if: always()
@@ -192,14 +164,11 @@ jobs:
       JWT_REFRESH_SECRET: e2e_ci_refresh_secret_32chars_long
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install E2E deps (root)
+      - name: Install workspace deps (root brings Playwright)
         run: npm ci
 
       - name: Install Playwright browsers
@@ -214,13 +183,14 @@ jobs:
           WEB_ORIGIN: "http://localhost:18080"
         run: |
           docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
-        timeout-minutes: 10
+        timeout-minutes: 15
 
-      # Run DB migrations inside the running backend container
+      # Run DB migrations inside the running backend container.
+      # Workspace layout: app at /app/backend; typeorm bin hoisted to /app/node_modules/.bin.
       - name: Run database migrations
         run: |
-          docker exec tweeter-backend-1 node_modules/.bin/typeorm migration:run \
-            -d dist/infra/database/data-source.js
+          docker exec -w /app/backend tweeter-backend-1 \
+            npx typeorm migration:run -d dist/infra/database/data-source.js
 
       - name: Run Playwright E2E tests
         env:

@@ -39,14 +39,24 @@ tests/
 
 ## Golden Commands
 
+Monorepo is **npm workspaces + Turborepo** on **Node 24** (single root lockfile). Run from the repo
+root; `make help` lists everything.
+
 ```bash
-docker compose up --build    # Lift full stack
-npm run dev                  # Frontend dev server
-npm run test                 # Unit + integration tests
-npm run test:coverage        # With coverage report
-npx playwright test          # E2E suite
-npm run lint                 # Lint check
-npm run typecheck            # TypeScript check
+make install            # Install all workspaces (single root package-lock.json)
+make dev                # Full stack with hot reload (docker compose + override)
+make build              # turbo run build  (all packages, cached)
+make lint               # turbo run lint
+make typecheck          # turbo run typecheck
+make test               # turbo run test   (unit, all packages)
+make test-integration   # Backend integration tests (dockerized db/redis on 5433/6380)
+make test-e2e           # Playwright E2E against the dockerized stack
+make verify             # Pre-ship gate: lint + typecheck + test → docker build → e2e
+
+# Direct equivalents (root npm scripts delegate to Turbo):
+docker compose up --build                  # Lift full stack
+npm run dev | build | lint | typecheck | test   # → turbo run <task>
+npx playwright test                        # E2E suite (root workspace)
 ```
 
 ## Interview Workflow
@@ -61,6 +71,8 @@ For PRD-driven delivery, keep `docs/prd/PRD-current.md` updated and versioned in
 - [ ] All unit and integration tests pass
 - [ ] TypeScript compiles / Python types valid (`mypy --strict`)
 - [ ] Lint clean (no errors)
+- [ ] Turborepo tasks green from root — `turbo run build lint typecheck test` (or `make verify`)
+- [ ] Single root lockfile (npm workspaces, Node 24) — no per-package `package-lock.json`
 - [ ] `docker compose up --build` succeeds and stack is healthy
 - [ ] E2E suite passes against dockerized stack
 - [ ] No `.env` committed; `.env.example` provided

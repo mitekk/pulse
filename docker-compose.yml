@@ -89,8 +89,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     depends_on:
       db:
         condition: service_healthy
@@ -98,6 +98,12 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      # Wait for the media bucket to be created before serving. This also makes
+      # `docker compose up --wait` deterministic: createbuckets is a run-to-completion
+      # one-shot (exits 0), so without an explicit completion dependency `--wait`
+      # would block waiting for it to become "running/healthy".
+      createbuckets:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
@@ -138,8 +144,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       target: runner
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
