@@ -11,22 +11,24 @@ not mistaken for bugs.
 
 ---
 
-## 1. Uploaded media is not attached to posts (`MEDIA_ATTACH_PORT` = noop)
+## 1. Uploaded media is attached to posts (`MEDIA_ATTACH_PORT` — ✅ WIRED)
 
-- **Status:** intentional seam, real implementation exists but unwired.
-- **User-facing impact:** media upload itself works end-to-end (`POST
-  /media/upload-url` → browser `PUT` → `POST /media/:id/finalize`), but a created
-  post does not get its uploaded media linked, so images/video don't appear on
-  posts.
-- **Wiring:** `PostsModule` binds `MEDIA_ATTACH_PORT` →
-  `NoopMediaAttachService` (`backend/src/modules/posts/noop-media-attach.service.ts`).
-- **Real impl (exists):** `MediaAttachAdapter`
-  (`backend/src/modules/media/media-attach.adapter.ts`), provided by `MediaModule`.
-- **Correct swap path:** bind `MEDIA_ATTACH_PORT` → `MediaAttachAdapter` and have
-  `PostsModule` import `MediaModule`. NOTE: `MediaModule` imports `PostsModule`,
-  so this is a circular dependency — break it the same way the viewer-flags cycle
-  was broken in `6eee1bf` (drop the back-import or use `forwardRef`). This is the
-  same proven pattern used to wire notifications/trends/viewer-flags.
+- **Status:** ✅ wired. Uploaded media now links to posts end-to-end.
+- **User-facing impact:** creating a post with finalized media IDs returns the
+  attached media; images/video appear on posts.
+- **Wiring:** `PostsModule` no longer binds a local noop. `MEDIA_ATTACH_PORT`
+  resolves from the `@Global` `MediaModule` → `MediaAttachAdapter`
+  (`backend/src/modules/media/media-attach.adapter.ts` → `MediaService.validateAndLoadForPost`),
+  the same `@Global`-resolution pattern used for `POSTS_NOTIFICATION_PORT` /
+  `VIEWER_FLAGS_PORT`.
+- **How it was done:** there was no real circular dependency (`MediaModule` does
+  not import `PostsModule`; `MediaService` needs only repos + storage + the media
+  queue). Removing the local noop shadow in `PostsModule` let the consumer resolve
+  the real `@Global` binding. The earlier "MediaModule imports PostsModule" note
+  was stale.
+- **Tests:** `tests/integration/media-attach.test.ts` (attach happy path +
+  ownership/status guards, real DI) and `tests/unit/media/media-attach.adapter.spec.ts`
+  (Media→AttachedMediaItem mapping).
 
 ## 2. Real-time delivery is not emitted (`REALTIME_PUBLISHER_PORT` = noop)
 

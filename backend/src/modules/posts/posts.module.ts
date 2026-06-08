@@ -8,8 +8,6 @@ import { PostHashtag } from './post-hashtag.entity';
 import { PostsService } from './posts.service';
 import { PostsController } from './posts.controller';
 import { EntityExtractorService } from './entity-extractor.service';
-import { NoopMediaAttachService } from './noop-media-attach.service';
-import { MEDIA_ATTACH_PORT } from './media-attach.port';
 import { TRENDS_INCREMENT_PORT } from './trends-increment.port';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
@@ -24,14 +22,10 @@ import { EngagementModule } from '../engagement/engagement.module';
  *   - 'fanout' — triggers home-timeline fan-out (processor added in TimelineModule, Phase 5)
  *   - 'search' — triggers FTS index update (processor added in SearchModule, Phase 8)
  *
- * VIEWER_FLAGS_PORT defaults to NoopViewerFlagsService (all flags false).
- * EngagementModule overrides this in AppModule by providing ViewerFlagsAdapter,
- * which delegates to ViewerFlagsService (Redis sets + DB fallback).
- *
- * The override pattern: PostsService injects VIEWER_FLAGS_PORT; when EngagementModule
- * is imported in AppModule after PostsModule, NestJS resolves the token to the last
- * provider. To properly override, we use module-level re-export of the token and
- * EngagementModule provides its adapter in AppModule scope.
+ * Port tokens resolved from @Global modules (no local bindings in providers[]):
+ *   - VIEWER_FLAGS_PORT  → ViewerFlagsAdapter   (EngagementModule, imported above)
+ *   - MEDIA_ATTACH_PORT  → MediaAttachAdapter   (@Global MediaModule)
+ *   - POSTS_NOTIFICATION_PORT → RealPostsNotificationService (@Global NotificationsModule)
  */
 @Module({
   imports: [
@@ -53,13 +47,9 @@ import { EngagementModule } from '../engagement/engagement.module';
   providers: [
     PostsService,
     EntityExtractorService,
-    // POSTS_NOTIFICATION_PORT resolves from the @Global NotificationsModule
-    // (RealPostsNotificationService); VIEWER_FLAGS_PORT resolves from the imported
-    // EngagementModule (ViewerFlagsAdapter) — neither needs a local binding.
-    {
-      provide: MEDIA_ATTACH_PORT,
-      useClass: NoopMediaAttachService,
-    },
+    // POSTS_NOTIFICATION_PORT, VIEWER_FLAGS_PORT, and MEDIA_ATTACH_PORT all resolve
+    // from their respective @Global modules (NotificationsModule, EngagementModule,
+    // MediaModule → MediaAttachAdapter) — no local bindings needed.
     // Real trending: increment hashtag scores in Redis on post create.
     {
       provide: TRENDS_INCREMENT_PORT,
@@ -70,7 +60,6 @@ import { EngagementModule } from '../engagement/engagement.module';
     PostsService,
     EntityExtractorService,
     TypeOrmModule, // export entities for EngagementModule, TimelineModule, etc.
-    MEDIA_ATTACH_PORT, // currently bound to noop — see docs/known-limitations.md
     TRENDS_INCREMENT_PORT,
   ],
 })
