@@ -39,8 +39,9 @@ tests/
 
 ## Golden Commands
 
-Monorepo is **npm workspaces + Turborepo** on **Node 24** (single root lockfile). Run from the repo
-root; `make help` lists everything.
+Monorepo is **npm workspaces + Turborepo** on **Node 24** (pinned via `.nvmrc` — local, containers,
+and CI all use the same exact version; single root lockfile). Run from the repo root; `make help`
+lists everything.
 
 ```bash
 make install            # Install all workspaces (single root package-lock.json)

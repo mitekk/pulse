@@ -13,8 +13,12 @@
 # Module resolution from /app/backend/dist walks /app/backend/node_modules → /app/node_modules.
 # ──────────────────────────────────────────────────────────────────────────────
 
+# Pinned Node version — single source of truth is .nvmrc. Compose/Makefile/CI
+# feed it from .nvmrc; the default keeps a bare `docker build` locked too.
+ARG NODE_VERSION=24.16.0
+
 # ─── Stage 1: Builder ────────────────────────────────────────────────────────
-FROM node:24-alpine AS builder
+FROM node:${NODE_VERSION}-alpine AS builder
 
 WORKDIR /app
 
@@ -33,7 +37,7 @@ COPY backend ./backend
 RUN npm run build --workspace=backend
 
 # ─── Stage 2: Runner ──────────────────────────────────────────────────────────
-FROM node:24-alpine AS runner
+FROM node:${NODE_VERSION}-alpine AS runner
 
 WORKDIR /app/backend
 

@@ -14,7 +14,8 @@ direct messages, notifications, search/hashtags/trends — all real-time over We
 ## Prerequisites
 
 - Docker + Docker Compose
-- Node.js 24+ and npm 10+ (only for running tests / Turbo / dev outside Docker)
+- Node.js 24 — pinned to an exact version in [.nvmrc](.nvmrc); run `nvm use` (only needed for running
+  tests / Turbo / dev outside Docker). The same version is used by the containers and CI.
 
 This is an **npm-workspaces + Turborepo** monorepo (`frontend`, `backend`, and the root e2e package)
 with a **single root `package-lock.json`**. Install once at the root; run `make help` for all tasks.

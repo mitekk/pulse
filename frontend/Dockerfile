@@ -17,8 +17,12 @@
 # Exposed port: 8080 (runner) / 5173 (dev). Healthcheck: GET /healthz → 200.
 # ============================================================
 
+# Pinned Node version — single source of truth is .nvmrc. Compose/Makefile/CI
+# feed it from .nvmrc; the default keeps a bare `docker build` locked too.
+ARG NODE_VERSION=24.16.0
+
 # ── Stage 1: builder ─────────────────────────────────────────
-FROM node:24-alpine AS builder
+FROM node:${NODE_VERSION}-alpine AS builder
 
 WORKDIR /app
 
@@ -76,7 +80,7 @@ CMD ["nginx", "-g", "daemon off;"]
 # The override bind-mounts ./frontend over /app/frontend with an anonymous
 # volume for /app/frontend/node_modules; hoisted deps at /app/node_modules
 # (baked into this stage) are not shadowed and remain resolvable.
-FROM node:24-alpine AS dev
+FROM node:${NODE_VERSION}-alpine AS dev
 
 WORKDIR /app
 COPY package.json package-lock.json ./

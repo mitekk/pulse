@@ -8,6 +8,10 @@
         test-integration test-e2e migrate migrate-generate clean verify ship
 
 # ── CI-parity knobs (keep in sync with .github/workflows/ci.yml) ──────────────
+# Pinned Node version — single source of truth is .nvmrc; exported so every
+# `docker compose build`/`up --build` target builds the pinned version.
+NODE_VERSION       := $(shell cat .nvmrc 2>/dev/null)
+export NODE_VERSION
 COMPOSE            := docker compose
 E2E_FILES          := -f docker-compose.yml -f docker-compose.e2e.yml
 TEST_FILES         := -f docker-compose.yml -f docker-compose.test.yml

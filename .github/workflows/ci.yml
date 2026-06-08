@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: '.nvmrc'
           cache: npm
       - name: Install workspace deps
         run: npm ci
@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: '.nvmrc'
           cache: npm
       - name: Install workspace deps
         run: npm ci
@@ -96,7 +96,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: '.nvmrc'
           cache: npm
       - name: Install workspace deps
         run: npm ci
@@ -166,7 +166,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: '.nvmrc'
           cache: npm
       - name: Install workspace deps (root brings Playwright)
         run: npm ci
@@ -182,7 +182,7 @@ jobs:
           FRONTEND_PORT: "18080"
           WEB_ORIGIN: "http://localhost:18080"
         run: |
-          docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
+          NODE_VERSION=$(cat .nvmrc) docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
         timeout-minutes: 15
 
       # Run DB migrations inside the running backend container.
@@ -215,4 +215,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build all images
-        run: docker compose build
+        run: NODE_VERSION=$(cat .nvmrc) docker compose build

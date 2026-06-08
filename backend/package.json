@@ -4,7 +4,7 @@
   "description": "Microblogging platform backend — NestJS 11 + Fastify",
   "private": true,
   "engines": {
-    "node": ">=24"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "nest start --watch",
