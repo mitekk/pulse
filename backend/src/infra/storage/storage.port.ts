@@ -1,50 +1,57 @@
+import type { Readable } from 'stream';
+
 /**
- * StoragePort — interface for object storage operations.
+ * StoragePort — storage-agnostic object-store interface.
  *
- * Implementations: MinioStorageService (local/self-hosted), AwsS3StorageService (future).
- * Inject StoragePort in domain services — never import MinioStorageService directly.
+ * The only implementation is S3-compatible (MinIO in dev and prod via AWS SDK
+ * v3, forcePathStyle). Inject StoragePort in domain code — never the concrete
+ * service. Two endpoint roles matter:
+ *   - browser-facing: presigned POST (upload) + public GET URLs (serve)
+ *   - server-side:    head/get/put/delete/list over the internal endpoint
  */
-export interface PresignedUploadResult {
-  /** Presigned URL the client uploads to directly (PUT) */
-  uploadUrl: string;
-  /** Object key (path) within the bucket */
-  key: string;
-  /** How long the presigned URL is valid (seconds) */
-  expiresIn: number;
-}
-
-export interface PresignedDownloadResult {
-  /** Presigned URL for reading the object */
-  url: string;
-  /** How long the URL is valid (seconds) */
-  expiresIn: number;
-}
-
 export const STORAGE_PORT = Symbol('STORAGE_PORT');
+
+/** A presigned POST the browser submits as multipart/form-data (file last). */
+export interface PresignedPost {
+  /** Form action URL (public endpoint, path-style: <endpoint>/<bucket>). */
+  url: string;
+  /** Required form fields (policy, signature, key, Content-Type, …). */
+  fields: Record<string, string>;
+}
+
+/** Result of a HEAD on an object. */
+export interface ObjectHead {
+  size: number;
+  contentType: string | null;
+}
 
 export interface StoragePort {
   /**
-   * Generate a presigned URL for a direct client upload.
-   * The bucket is determined by configuration.
+   * Presigned POST for a direct browser upload. Enforces an exact key, a
+   * content-length range [1, maxBytes], and an exact Content-Type at the edge,
+   * so a client cannot exceed the cap or upload a disallowed type even if it
+   * bypasses the UI. Signed against the PUBLIC endpoint.
    */
-  getPresignedUploadUrl(
+  createPresignedPost(
     key: string,
-    mimeType: string,
-    expiresIn?: number,
-  ): Promise<PresignedUploadResult>;
+    opts: { maxBytes: number; contentType: string; expiresIn?: number },
+  ): Promise<PresignedPost>;
 
-  /**
-   * Generate a presigned URL for a client to download/view an object.
-   */
-  getPresignedDownloadUrl(key: string, expiresIn?: number): Promise<PresignedDownloadResult>;
+  /** HEAD an object (internal endpoint). Returns null if it does not exist. */
+  headObject(key: string): Promise<ObjectHead | null>;
 
-  /**
-   * Delete an object from storage.
-   */
-  delete(key: string): Promise<void>;
+  /** Server-side read — stream the object's bytes (internal endpoint). */
+  getObjectStream(key: string): Promise<Readable>;
 
-  /**
-   * Check whether an object exists in storage.
-   */
-  exists(key: string): Promise<boolean>;
+  /** Server-side write (internal endpoint). */
+  putObject(key: string, body: Buffer, contentType: string): Promise<void>;
+
+  /** Delete an object; no error if it is already absent (internal endpoint). */
+  deleteObject(key: string): Promise<void>;
+
+  /** Stable public-read URL for a key (public-read bucket / CDN). Sync, no signing. */
+  getPublicUrl(key: string): string;
+
+  /** Sum of all object byte sizes in the bucket — usage reconciliation seam. */
+  listBucketBytes(): Promise<number>;
 }

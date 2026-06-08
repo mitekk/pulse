@@ -1,9 +1,22 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { User } from '../users/user.entity';
 
 export type MediaType = 'image' | 'gif' | 'video';
 export type MediaStatus = 'pending' | 'processing' | 'ready' | 'failed';
 
+/**
+ * Variant map. Values are object STORAGE KEYS (not URLs) — public URLs are
+ * derived at read time via StoragePort.getPublicUrl so nothing in the DB
+ * depends on a host/CDN/expiry.
+ */
 export interface MediaVariants {
   thumb?: string;
   small?: string;
@@ -12,6 +25,12 @@ export interface MediaVariants {
   mp4?: string;
   poster?: string;
 }
+
+/** bigint ⇄ number transformer (sizes stay well within Number.MAX_SAFE_INTEGER). */
+export const bigintToNumber = {
+  to: (v?: number | null): number | null | undefined => v,
+  from: (v?: string | null): number => (v === null || v === undefined ? 0 : Number(v)),
+};
 
 @Entity('media')
 export class Media {
@@ -53,6 +72,17 @@ export class Media {
   @Column({ type: 'jsonb', default: {} })
   variants!: MediaVariants;
 
+  /** Byte size: reserved (client-declared) at upload-url, set to actual at finalize. */
+  @Column({ name: 'byte_size', type: 'bigint', default: 0, transformer: bigintToNumber })
+  byteSize!: number;
+
+  /** Set when finalize verifies the uploaded object exists. */
+  @Column({ name: 'committed_at', type: 'timestamptz', nullable: true })
+  committedAt!: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt!: Date;
 }

@@ -13,6 +13,7 @@ import { VisibilityService } from '../users/visibility.service';
 import { ViewerFlagsService } from '../engagement/viewer-flags.service';
 import { EntityExtractorService } from '../posts/entity-extractor.service';
 import { PostCacheService } from './post-cache.service';
+import { MediaHydrationService } from '../media/media-hydration.service';
 import { CursorUtil } from '../../common/utils/cursor.util';
 import {
   PostDto,
@@ -129,6 +130,7 @@ export class TimelineService {
     private readonly viewerFlagsService: ViewerFlagsService,
     private readonly entityExtractor: EntityExtractorService,
     private readonly postCacheService: PostCacheService,
+    private readonly mediaHydration: MediaHydrationService,
     private readonly configService: ConfigService,
   ) {
     this.celebrityThreshold =
@@ -366,6 +368,7 @@ export class TimelineService {
           )
         : null;
 
+    await this.mediaHydration.apply(items);
     return { items, cursor: nextCursor, hasMore };
   }
 
@@ -432,6 +435,7 @@ export class TimelineService {
     const nextCursor =
       hasMore && page.length > 0 ? CursorUtil.encodeId(page[page.length - 1].id) : null;
 
+    await this.mediaHydration.apply(items);
     return { items, cursor: nextCursor, hasMore };
   }
 
@@ -653,6 +657,7 @@ export class TimelineService {
     const nextCursor =
       hasMore && page.length > 0 ? CursorUtil.encodeId(page[page.length - 1].postId) : null;
 
+    await this.mediaHydration.apply(items);
     return { items, cursor: nextCursor, hasMore };
   }
 
@@ -721,6 +726,7 @@ export class TimelineService {
     const nextCursor =
       hasMore && page.length > 0 ? CursorUtil.encodeId(page[page.length - 1].postId) : null;
 
+    await this.mediaHydration.apply(items);
     return { items, cursor: nextCursor, hasMore };
   }
 
@@ -861,6 +867,7 @@ export class TimelineService {
     const nextCursor =
       hasMore && page.length > 0 ? CursorUtil.encodeId(page[page.length - 1].id) : null;
 
+    await this.mediaHydration.apply(items);
     return { items, cursor: nextCursor, hasMore };
   }
 }

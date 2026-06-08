@@ -16,6 +16,7 @@ import { AuthGuard } from '../../common/guards/auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AccessTokenPayload } from '../auth/auth.service';
 import type { MediaDto } from './dto/media.dto';
+import type { PresignedPost } from '../../infra/storage/storage.port';
 
 @Controller('media')
 @UseGuards(AuthGuard)
@@ -24,14 +25,15 @@ export class MediaController {
 
   /**
    * POST /api/v1/media/upload-url
-   * Validate file metadata, create pending media row, return presigned PUT URL.
+   * Reserve quota, create a pending media row, return a presigned POST (policy
+   * enforces per-file size + content-type at the edge).
    */
   @Post('upload-url')
   @HttpCode(HttpStatus.CREATED)
   async createUploadUrl(
     @CurrentUser() user: AccessTokenPayload,
     @Body() dto: UploadUrlDto,
-  ): Promise<{ mediaId: string; uploadUrl: string }> {
+  ): Promise<{ mediaId: string; upload: PresignedPost }> {
     return this.mediaService.createUploadUrl(user.sub, dto);
   }
 

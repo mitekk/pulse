@@ -20,6 +20,7 @@ import { EntityExtractorService, ExtractedEntities } from './entity-extractor.se
 import { POSTS_NOTIFICATION_PORT, PostsNotificationPort } from './posts-notification.port';
 import { VIEWER_FLAGS_PORT, ViewerFlagsPort } from './viewer-flags.port';
 import { MEDIA_ATTACH_PORT, MediaAttachPort } from './media-attach.port';
+import { MediaHydrationService } from '../media/media-hydration.service';
 import { RedisService } from '../../infra/redis/redis.service';
 import { SnowflakeUtil } from '../../common/utils/snowflake.util';
 import { CursorUtil } from '../../common/utils/cursor.util';
@@ -154,6 +155,7 @@ export class PostsService {
     private readonly viewerFlagsPort: ViewerFlagsPort,
     @Inject(MEDIA_ATTACH_PORT)
     private readonly mediaAttachPort: MediaAttachPort,
+    private readonly mediaHydration: MediaHydrationService,
     private readonly redisService: RedisService,
     @InjectQueue('fanout')
     private readonly fanoutQueue: Queue,
@@ -330,6 +332,7 @@ export class PostsService {
     const mediaDtos: PostMediaDto[] = attachedMedia.map((m) => ({
       id: m.id,
       type: m.type,
+      status: 'ready', // attached media is validated ready
       variants: m.variants,
       altText: m.altText,
       width: m.width,
@@ -534,7 +537,9 @@ export class PostsService {
       }
     }
 
-    return toPostDto(post, entities, viewerFlags, quoteOfDto, repostOfDto, null);
+    const dto = toPostDto(post, entities, viewerFlags, quoteOfDto, repostOfDto, null);
+    await this.mediaHydration.apply([dto]);
+    return dto;
   }
 
   // ── soft delete ────────────────────────────────────────────────────────────
@@ -665,6 +670,7 @@ export class PostsService {
         ? CursorUtil.encodeId(replyPage[replyPage.length - 1].id)
         : null;
 
+    await this.mediaHydration.apply([...ancestors, focused, ...replyDtos]);
     return {
       ancestors,
       post: focused,
@@ -835,6 +841,7 @@ export class PostsService {
     const nextCursor =
       hasMore && page.length > 0 ? CursorUtil.encodeId(page[page.length - 1].id) : null;
 
+    await this.mediaHydration.apply(items);
     return { items, cursor: nextCursor, hasMore };
   }
 

@@ -1,156 +1,150 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { Media, MediaType } from './media.entity';
-import { STORAGE_PORT, StoragePort } from '../../infra/storage/storage.port';
+import { randomUUID } from 'crypto';
+import { Media } from './media.entity';
+import { STORAGE_PORT, StoragePort, PresignedPost } from '../../infra/storage/storage.port';
 import { SnowflakeUtil } from '../../common/utils/snowflake.util';
 import { UploadUrlDto } from './dto/upload-url.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
 import { MediaDto } from './dto/media.dto';
+import { MediaLimits } from './media-limits';
+import { QuotaService } from './quota.service';
+import { mediaToDto } from './media-url.util';
 
-// ── Media Limits ──────────────────────────────────────────────────────────────
-
-/** Max images per post (type=image) */
-export const MAX_IMAGES_PER_POST = 4;
-
-/** Max size for images in bytes (~5 MB) */
-export const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-
-/** Max size for video in bytes (100 MB) */
-export const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
-
-/** Max size for GIF in bytes (15 MB) */
-export const MAX_GIF_SIZE = 15 * 1024 * 1024;
-
-/** Allowed MIME types per media type */
-const ALLOWED_MIMES: Record<MediaType, string[]> = {
-  image: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'],
-  gif: ['image/gif'],
-  video: ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo'],
-};
-
-/** Max upload URL validity in seconds */
-const UPLOAD_URL_EXPIRY = 900; // 15 minutes
-
-// ── Helper ────────────────────────────────────────────────────────────────────
-
-export function toMediaDto(media: Media): MediaDto {
-  return {
-    id: media.id,
-    type: media.type,
-    status: media.status,
-    mime: media.mime,
-    width: media.width,
-    height: media.height,
-    durationMs: media.durationMs,
-    altText: media.altText,
-    variants: media.variants,
-    createdAt: media.createdAt.toISOString(),
-  };
-}
-
-// ── MediaService ──────────────────────────────────────────────────────────────
+const UPLOAD_POST_EXPIRY = 900; // 15 minutes — keep in sync with the reaper's pending TTL
 
 @Injectable()
 export class MediaService {
   private readonly logger = new Logger(MediaService.name);
 
   constructor(
-    @InjectRepository(Media)
-    private readonly mediaRepo: Repository<Media>,
-    @Inject(STORAGE_PORT)
-    private readonly storage: StoragePort,
-    @InjectQueue('media')
-    private readonly mediaQueue: Queue,
+    @InjectRepository(Media) private readonly mediaRepo: Repository<Media>,
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
+    @InjectQueue('media') private readonly mediaQueue: Queue,
+    private readonly limits: MediaLimits,
+    private readonly quota: QuotaService,
   ) {}
 
-  // ── POST /api/v1/media/upload-url ─────────────────────────────────────────
+  // ── POST /api/v1/media/uploads ────────────────────────────────────────────
 
+  /**
+   * Reserve global quota and return a presigned POST. The POST policy caps
+   * content-length to maxBytesPerFile and pins Content-Type, so MinIO rejects an
+   * oversize/wrong-type upload at the edge even if the client bypasses the UI.
+   */
   async createUploadUrl(
     ownerId: string,
     dto: UploadUrlDto,
-  ): Promise<{ mediaId: string; uploadUrl: string }> {
-    const { type, mime, size } = dto;
+  ): Promise<{ mediaId: string; upload: PresignedPost }> {
+    const { type, size } = dto;
+    const mime = dto.mime.toLowerCase();
 
-    // ── Validate MIME ──────────────────────────────────────────────────────
-    const allowed = ALLOWED_MIMES[type];
-    if (!allowed.includes(mime.toLowerCase())) {
+    if (type === 'video') {
+      throw new BadRequestException({
+        error: { code: 'VIDEO_NOT_SUPPORTED', message: 'Video uploads are not enabled.' },
+      });
+    }
+    if (!this.limits.isMimeAllowed(mime)) {
       throw new BadRequestException({
         error: {
           code: 'INVALID_MIME_TYPE',
-          message: `MIME type "${mime}" is not allowed for type "${type}". Allowed: ${allowed.join(', ')}`,
+          message: `MIME type "${mime}" is not allowed. Allowed: ${this.limits.allowedMimes.join(', ')}`,
         },
       });
     }
-
-    // ── Validate size ──────────────────────────────────────────────────────
-    const maxSize =
-      type === 'image' ? MAX_IMAGE_SIZE : type === 'gif' ? MAX_GIF_SIZE : MAX_VIDEO_SIZE;
-
-    if (size > maxSize) {
-      throw new BadRequestException({
-        error: {
-          code: 'FILE_TOO_LARGE',
-          message: `File size ${size} exceeds maximum ${maxSize} bytes for type "${type}"`,
+    if (size > this.limits.maxBytesPerFile) {
+      throw new HttpException(
+        {
+          error: {
+            code: 'FILE_TOO_LARGE',
+            message: `File size ${size} exceeds the ${this.limits.maxBytesPerFile}-byte per-file limit.`,
+          },
         },
-      });
+        HttpStatus.PAYLOAD_TOO_LARGE, // 413
+      );
     }
 
-    // ── Generate Snowflake ID + storage key ───────────────────────────────
-    const id = SnowflakeUtil.instance.generate();
-    const ext = mime.split('/')[1] ?? 'bin';
-    const storageKey = `uploads/${ownerId}/${id}.${ext}`;
+    // Atomically reserve against the global cap (throws 507 if it would exceed).
+    await this.quota.reserve(size);
+    try {
+      const id = SnowflakeUtil.instance.generate();
+      const ext = mime.split('/')[1] ?? 'bin';
+      const storageKey = `media/${ownerId}/${randomUUID()}/original.${ext}`;
 
-    // ── Create media row status=pending ───────────────────────────────────
-    const media = this.mediaRepo.create({
-      id,
-      ownerId,
-      type,
-      mime: mime.toLowerCase(),
-      status: 'pending',
-      storageKey,
-      variants: {},
-    });
-    await this.mediaRepo.save(media);
+      const media = this.mediaRepo.create({
+        id,
+        ownerId,
+        type,
+        mime,
+        status: 'pending',
+        storageKey,
+        byteSize: size,
+        variants: {},
+      });
+      await this.mediaRepo.save(media);
 
-    // ── Generate presigned PUT URL ─────────────────────────────────────────
-    const { uploadUrl } = await this.storage.getPresignedUploadUrl(
-      storageKey,
-      mime,
-      UPLOAD_URL_EXPIRY,
-    );
+      const upload = await this.storage.createPresignedPost(storageKey, {
+        maxBytes: this.limits.maxBytesPerFile,
+        contentType: mime,
+        expiresIn: UPLOAD_POST_EXPIRY,
+      });
 
-    this.logger.debug(`Created media ${id} for owner ${ownerId}, key: ${storageKey}`);
-
-    return { mediaId: id, uploadUrl };
+      this.logger.debug(`Reserved ${size}B for media ${id} (owner ${ownerId})`);
+      return { mediaId: id, upload };
+    } catch (err) {
+      // Roll back the reservation if we failed to create the row / presign.
+      await this.quota.release(size);
+      throw err;
+    }
   }
 
-  // ── POST /api/v1/media/:id/finalize ──────────────────────────────────────
+  // ── POST /api/v1/media/:id/finalize ───────────────────────────────────────
 
+  /**
+   * Verify the object actually landed, commit the reservation to its real size,
+   * and enqueue processing. Idempotent once processing/ready.
+   */
   async finalize(mediaId: string, requesterId: string): Promise<MediaDto> {
     const media = await this.findOwned(mediaId, requesterId);
 
-    if (media.status !== 'pending') {
-      // Idempotent — allow re-finalize if still pending; otherwise reject
-      if (media.status === 'processing' || media.status === 'ready') {
-        return toMediaDto(media);
-      }
-      // Failed — allow retry
+    if (media.status === 'processing' || media.status === 'ready') {
+      return mediaToDto(media, this.storage); // idempotent
     }
 
-    // Transition to processing
-    await this.mediaRepo.update(mediaId, { status: 'processing' });
+    const head = media.storageKey ? await this.storage.headObject(media.storageKey) : null;
+    if (!head) {
+      throw new BadRequestException({
+        error: { code: 'MEDIA_NOT_UPLOADED', message: 'No uploaded object found for this media.' },
+      });
+    }
+    if (head.size > this.limits.maxBytesPerFile) {
+      await this.failAndRelease(media);
+      throw new HttpException(
+        { error: { code: 'FILE_TOO_LARGE', message: 'Uploaded file exceeds the per-file limit.' } },
+        HttpStatus.PAYLOAD_TOO_LARGE,
+      );
+    }
 
-    // Enqueue processing job (idempotent by jobId)
+    // Commit reservation to the actual size (client-declared was an estimate).
+    await this.quota.adjust(head.size - media.byteSize);
+    await this.mediaRepo.update(mediaId, {
+      status: 'processing',
+      byteSize: head.size,
+      committedAt: new Date(),
+    });
+
     await this.mediaQueue
       .add(
         'media.process',
@@ -165,14 +159,14 @@ export class MediaService {
         this.logger.warn(`Failed to enqueue media.process for ${mediaId}: ${String(err)}`),
       );
 
-    return toMediaDto({ ...media, status: 'processing' });
+    return mediaToDto({ ...media, status: 'processing', byteSize: head.size }, this.storage);
   }
 
   // ── GET /api/v1/media/:id ─────────────────────────────────────────────────
 
   async findOne(mediaId: string, requesterId: string): Promise<MediaDto> {
     const media = await this.findOwned(mediaId, requesterId);
-    return toMediaDto(media);
+    return mediaToDto(media, this.storage);
   }
 
   // ── PATCH /api/v1/media/:id ───────────────────────────────────────────────
@@ -183,18 +177,15 @@ export class MediaService {
     dto: UpdateMediaDto,
   ): Promise<MediaDto> {
     const media = await this.findOwned(mediaId, requesterId);
-
     if (dto.altText !== undefined) {
       await this.mediaRepo.update(mediaId, { altText: dto.altText });
       media.altText = dto.altText;
     }
-
-    return toMediaDto(media);
+    return mediaToDto(media, this.storage);
   }
 
   // ── Internal helpers ──────────────────────────────────────────────────────
 
-  /** Load a media row and enforce ownership */
   private async findOwned(mediaId: string, requesterId: string): Promise<Media> {
     const media = await this.mediaRepo.findOne({ where: { id: mediaId } });
     if (!media) {
@@ -210,44 +201,45 @@ export class MediaService {
     return media;
   }
 
+  private async failAndRelease(media: Media): Promise<void> {
+    await this.mediaRepo.update(media.id, { status: 'failed' });
+    await this.quota.release(media.byteSize);
+  }
+
   /**
-   * Validate that a list of mediaIds are all ready, owned by the given user,
-   * and satisfy post-level count/type limits.
-   *
-   * Called by PostsService.create() at the media-attach seam.
-   *
-   * Rules:
-   *  - Each id must exist with status=ready
-   *  - Each id must be owned by postAuthorId
-   *  - Max 4 images per post (type=image)
-   *  - Max 1 video or gif per post; cannot be mixed with images
-   *  - No mixing of video+gif in the same post
+   * Authoritative per-post media check (the attach seam called by PostsService).
+   * The presigned-POST policy caps each FILE; the per-POST total + count + type
+   * rules are enforced here. Rules: ≤ maxFilesPerPost, all ready+owned, total
+   * bytes ≤ maxBytesPerPost, no video (deferred), ≤ 1 GIF, no GIF+image mixing.
    */
   async validateAndLoadForPost(mediaIds: string[], postAuthorId: string): Promise<Media[]> {
     if (mediaIds.length === 0) return [];
 
-    const medias = await this.mediaRepo.findByIds(mediaIds);
+    if (mediaIds.length > this.limits.maxFilesPerPost) {
+      throw new HttpException(
+        {
+          error: {
+            code: 'TOO_MANY_FILES',
+            message: `Maximum ${this.limits.maxFilesPerPost} media files per post.`,
+          },
+        },
+        HttpStatus.UNPROCESSABLE_ENTITY, // 422
+      );
+    }
 
-    // Check all exist
+    const medias = await this.mediaRepo.findBy({ id: In(mediaIds) });
     const foundIds = new Set(medias.map((m) => m.id));
     const missing = mediaIds.filter((id) => !foundIds.has(id));
     if (missing.length > 0) {
       throw new BadRequestException({
-        error: {
-          code: 'MEDIA_NOT_FOUND',
-          message: `Media not found: ${missing.join(', ')}`,
-        },
+        error: { code: 'MEDIA_NOT_FOUND', message: `Media not found: ${missing.join(', ')}` },
       });
     }
 
-    // Validate ownership + status
     for (const m of medias) {
       if (m.ownerId !== postAuthorId) {
         throw new ForbiddenException({
-          error: {
-            code: 'MEDIA_NOT_OWNED',
-            message: `Media ${m.id} is not owned by you`,
-          },
+          error: { code: 'MEDIA_NOT_OWNED', message: `Media ${m.id} is not owned by you` },
         });
       }
       if (m.status !== 'ready') {
@@ -258,41 +250,42 @@ export class MediaService {
           },
         });
       }
+      if (m.type === 'video') {
+        throw new BadRequestException({
+          error: { code: 'VIDEO_NOT_SUPPORTED', message: 'Video uploads are not enabled.' },
+        });
+      }
     }
 
-    // Count limits
-    const images = medias.filter((m) => m.type === 'image');
-    const videos = medias.filter((m) => m.type === 'video');
+    const totalBytes = medias.reduce((sum, m) => sum + m.byteSize, 0);
+    if (totalBytes > this.limits.maxBytesPerPost) {
+      throw new HttpException(
+        {
+          error: {
+            code: 'POST_MEDIA_TOO_LARGE',
+            message: `Total media (${totalBytes}B) exceeds the ${this.limits.maxBytesPerPost}-byte per-post limit.`,
+          },
+        },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
     const gifs = medias.filter((m) => m.type === 'gif');
-
-    if (images.length > MAX_IMAGES_PER_POST) {
+    const images = medias.filter((m) => m.type === 'image');
+    if (gifs.length > 1) {
       throw new BadRequestException({
-        error: {
-          code: 'TOO_MANY_IMAGES',
-          message: `Maximum ${MAX_IMAGES_PER_POST} images per post`,
-        },
+        error: { code: 'TOO_MANY_GIFS', message: 'Maximum 1 GIF per post.' },
       });
     }
-
-    if (videos.length + gifs.length > 1) {
-      throw new BadRequestException({
-        error: {
-          code: 'TOO_MANY_VIDEOS',
-          message: 'Maximum 1 video or GIF per post',
-        },
-      });
-    }
-
-    if ((videos.length > 0 || gifs.length > 0) && images.length > 0) {
+    if (gifs.length > 0 && images.length > 0) {
       throw new BadRequestException({
         error: {
           code: 'MIXED_MEDIA_TYPES',
-          message: 'Cannot mix video/GIF with images in the same post',
+          message: 'Cannot mix a GIF with images in the same post.',
         },
       });
     }
 
-    // All IDs verified to exist above — safe to assert
     return mediaIds.map((id) => medias.find((m) => m.id === id) as Media);
   }
 }

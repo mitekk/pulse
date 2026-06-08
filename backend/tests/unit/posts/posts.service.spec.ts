@@ -173,6 +173,7 @@ function buildService() {
     notificationPort as never,
     viewerFlagsPort as never,
     mediaAttachPort as never,
+    { apply: vi.fn().mockResolvedValue(undefined) } as never, // mediaHydration
     redisService as never,
     fanoutQueue as never,
     searchQueue as never,

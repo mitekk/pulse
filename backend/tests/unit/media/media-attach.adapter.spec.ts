@@ -26,15 +26,23 @@ function makeMedia(overrides: Partial<Media> = {}): Media {
     height: 1080,
     durationMs: null,
     altText: 'A test image',
+    // variants are storage KEYS in the new model
     variants: {
-      thumb: 'https://cdn.example.com/thumb.jpg',
-      small: 'https://cdn.example.com/small.jpg',
+      thumb: 'processed/owner-uuid-1/111111111111001/thumb',
+      small: 'processed/owner-uuid-1/111111111111001/small',
     },
+    byteSize: 1000,
+    committedAt: new Date('2026-06-07T00:00:00Z'),
     createdAt: new Date('2026-06-07T00:00:00Z'),
+    updatedAt: new Date('2026-06-07T00:00:00Z'),
     owner: {} as never,
     ...overrides,
   } as Media;
 }
+
+// Mirrors MinioStorageService.getPublicUrl for the test base.
+const PUBLIC_BASE = 'http://localhost:9000/tweeter-media';
+const storageMock = { getPublicUrl: (key: string): string => `${PUBLIC_BASE}/${key}` };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -44,8 +52,7 @@ describe('MediaAttachAdapter', () => {
 
   beforeEach(() => {
     mockMediaService = { validateAndLoadForPost: vi.fn() };
-    // MediaAttachAdapter only depends on MediaService — construct directly
-    adapter = new MediaAttachAdapter(mockMediaService as never);
+    adapter = new MediaAttachAdapter(mockMediaService as never, storageMock as never);
   });
 
   describe('validateAndLoad', () => {
@@ -76,7 +83,9 @@ describe('MediaAttachAdapter', () => {
       expect(item.height).toBe(media.height);
       expect(item.durationMs).toBe(media.durationMs);
       expect(item.altText).toBe(media.altText);
-      expect(item.variants).toEqual(media.variants);
+      // variant keys serialized to public URLs
+      expect(item.variants.thumb).toBe(`${PUBLIC_BASE}/${media.variants.thumb}`);
+      expect(item.variants.small).toBe(`${PUBLIC_BASE}/${media.variants.small}`);
     });
 
     it('preserves the order of mediaIds in the returned array', async () => {
@@ -128,8 +137,8 @@ describe('MediaAttachAdapter', () => {
         height: 720,
         durationMs: 30000,
         variants: {
-          mp4: 'https://cdn.example.com/video.mp4',
-          poster: 'https://cdn.example.com/poster.jpg',
+          mp4: 'processed/owner-uuid-1/222222222222001/mp4',
+          poster: 'processed/owner-uuid-1/222222222222001/poster',
         },
       });
 
@@ -140,7 +149,7 @@ describe('MediaAttachAdapter', () => {
       expect(result).toHaveLength(1);
       expect(result[0].type).toBe('video');
       expect(result[0].durationMs).toBe(30000);
-      expect(result[0].variants).toEqual(videoMedia.variants);
+      expect(result[0].variants.mp4).toBe(`${PUBLIC_BASE}/${videoMedia.variants.mp4}`);
     });
 
     it('propagates errors thrown by validateAndLoadForPost', async () => {

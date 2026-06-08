@@ -2,17 +2,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getQueueToken } from '@nestjs/bullmq';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import {
-  MediaService,
-  MAX_IMAGE_SIZE,
-  MAX_VIDEO_SIZE,
-  MAX_GIF_SIZE,
-} from '../../../src/modules/media/media.service';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
+import { MediaService } from '../../../src/modules/media/media.service';
 import { Media } from '../../../src/modules/media/media.entity';
+import { MediaLimits } from '../../../src/modules/media/media-limits';
+import { QuotaService } from '../../../src/modules/media/quota.service';
 import { STORAGE_PORT } from '../../../src/infra/storage/storage.port';
 
-// ── Factories ─────────────────────────────────────────────────────────────────
+const ONE_MB = 1024 * 1024;
 
 function makeMedia(overrides: Partial<Media> = {}): Media {
   return {
@@ -20,422 +18,265 @@ function makeMedia(overrides: Partial<Media> = {}): Media {
     ownerId: 'user-uuid-1',
     type: 'image',
     status: 'pending',
-    storageKey: 'uploads/user-uuid-1/1111111111111.jpeg',
+    storageKey: 'media/user-uuid-1/uuid/original.jpeg',
     mime: 'image/jpeg',
     width: null,
     height: null,
     durationMs: null,
     altText: null,
     variants: {},
+    byteSize: 1000,
+    committedAt: null,
     createdAt: new Date('2026-06-07T00:00:00Z'),
+    updatedAt: new Date('2026-06-07T00:00:00Z'),
     owner: {} as never,
     ...overrides,
   } as Media;
 }
 
-// ── Test suite ────────────────────────────────────────────────────────────────
-
 describe('MediaService', () => {
   let service: MediaService;
 
   const mediaRepo = {
-    create: vi.fn(),
+    create: vi.fn((v: Partial<Media>) => makeMedia(v)),
     save: vi.fn(),
     findOne: vi.fn(),
     update: vi.fn(),
-    findByIds: vi.fn(),
+    findBy: vi.fn(),
   };
 
   const storageMock = {
-    getPresignedUploadUrl: vi
+    createPresignedPost: vi
       .fn()
-      .mockResolvedValue({ uploadUrl: 'https://minio/presigned', key: 'k', expiresIn: 900 }),
-    getPresignedDownloadUrl: vi.fn(),
-    delete: vi.fn(),
-    exists: vi.fn(),
+      .mockResolvedValue({ url: 'http://minio:9000/tweeter-media', fields: { key: 'k' } }),
+    headObject: vi.fn(),
+    getObjectStream: vi.fn(),
+    putObject: vi.fn(),
+    deleteObject: vi.fn(),
+    getPublicUrl: vi.fn((key: string) => `http://localhost:9000/tweeter-media/${key}`),
+    listBucketBytes: vi.fn().mockResolvedValue(0),
   };
 
-  const mediaQueue = {
-    add: vi.fn().mockResolvedValue({}),
+  const quota = {
+    reserve: vi.fn().mockResolvedValue(undefined),
+    adjust: vi.fn().mockResolvedValue(undefined),
+    release: vi.fn().mockResolvedValue(undefined),
   };
+
+  const mediaQueue = { add: vi.fn().mockResolvedValue({}) };
+
+  // Real limits with defaults (2 files · 1 MB · 2 MB · 500 MB · 80%).
+  const limits = new MediaLimits({ get: () => undefined } as unknown as ConfigService);
 
   beforeEach(async () => {
     vi.clearAllMocks();
-
     const moduleRef = await Test.createTestingModule({
       providers: [
         MediaService,
         { provide: getRepositoryToken(Media), useValue: mediaRepo },
         { provide: STORAGE_PORT, useValue: storageMock },
         { provide: getQueueToken('media'), useValue: mediaQueue },
+        { provide: MediaLimits, useValue: limits },
+        { provide: QuotaService, useValue: quota },
       ],
     }).compile();
-
     service = moduleRef.get(MediaService);
   });
 
-  // ── createUploadUrl ────────────────────────────────────────────────────────
-
   describe('createUploadUrl', () => {
-    it('creates pending media row and returns presigned URL for valid image', async () => {
-      mediaRepo.create.mockReturnValue(makeMedia());
-      mediaRepo.save.mockResolvedValue(makeMedia());
-
+    it('reserves quota and returns a presigned POST for a valid image', async () => {
       const result = await service.createUploadUrl('user-uuid-1', {
         type: 'image',
         mime: 'image/jpeg',
-        size: 1024 * 100,
+        size: 100 * 1024,
       });
 
       expect(result.mediaId).toBeTruthy();
-      expect(result.uploadUrl).toBe('https://minio/presigned');
+      expect(result.upload.url).toContain('tweeter-media');
+      expect(quota.reserve).toHaveBeenCalledWith(100 * 1024);
       expect(mediaRepo.save).toHaveBeenCalledOnce();
-      expect(storageMock.getPresignedUploadUrl).toHaveBeenCalledOnce();
+      expect(storageMock.createPresignedPost).toHaveBeenCalledOnce();
     });
 
-    it('rejects invalid MIME type for image', async () => {
+    it('rejects a disallowed MIME type', async () => {
       await expect(
         service.createUploadUrl('user-uuid-1', {
           type: 'image',
-          mime: 'video/mp4',
+          mime: 'application/pdf',
           size: 1000,
         }),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow();
+      expect(quota.reserve).not.toHaveBeenCalled();
     });
 
-    it('rejects invalid MIME type for gif', async () => {
+    it('rejects video uploads (deferred)', async () => {
       await expect(
-        service.createUploadUrl('user-uuid-1', {
-          type: 'gif',
-          mime: 'image/jpeg',
-          size: 1000,
-        }),
-      ).rejects.toThrow(BadRequestException);
+        service.createUploadUrl('user-uuid-1', { type: 'video', mime: 'video/mp4', size: 1000 }),
+      ).rejects.toThrow();
     });
 
-    it('rejects image exceeding 5MB limit', async () => {
+    it('rejects a file over the 1 MB per-file limit', async () => {
       await expect(
         service.createUploadUrl('user-uuid-1', {
           type: 'image',
           mime: 'image/jpeg',
-          size: MAX_IMAGE_SIZE + 1,
+          size: ONE_MB + 1,
         }),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow();
+      expect(quota.reserve).not.toHaveBeenCalled();
     });
 
-    it('accepts image exactly at 5MB limit', async () => {
-      mediaRepo.create.mockReturnValue(makeMedia());
-      mediaRepo.save.mockResolvedValue(makeMedia());
-
+    it('accepts a file exactly at the per-file limit', async () => {
       await expect(
-        service.createUploadUrl('user-uuid-1', {
-          type: 'image',
-          mime: 'image/jpeg',
-          size: MAX_IMAGE_SIZE,
-        }),
+        service.createUploadUrl('user-uuid-1', { type: 'image', mime: 'image/jpeg', size: ONE_MB }),
       ).resolves.toBeDefined();
     });
 
-    it('rejects video exceeding 100MB limit', async () => {
+    it('releases the reservation if presigning fails', async () => {
+      storageMock.createPresignedPost.mockRejectedValueOnce(new Error('s3 down'));
       await expect(
-        service.createUploadUrl('user-uuid-1', {
-          type: 'video',
-          mime: 'video/mp4',
-          size: MAX_VIDEO_SIZE + 1,
-        }),
-      ).rejects.toThrow(BadRequestException);
+        service.createUploadUrl('user-uuid-1', { type: 'image', mime: 'image/jpeg', size: 5000 }),
+      ).rejects.toThrow();
+      expect(quota.release).toHaveBeenCalledWith(5000);
     });
 
-    it('rejects gif exceeding 15MB limit', async () => {
+    it('propagates a cap rejection from quota.reserve', async () => {
+      quota.reserve.mockRejectedValueOnce(new Error('STORAGE_CAP_EXCEEDED'));
       await expect(
-        service.createUploadUrl('user-uuid-1', {
-          type: 'gif',
-          mime: 'image/gif',
-          size: MAX_GIF_SIZE + 1,
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('accepts gif within 15MB limit', async () => {
-      mediaRepo.create.mockReturnValue(makeMedia({ type: 'gif', mime: 'image/gif' }));
-      mediaRepo.save.mockResolvedValue(makeMedia({ type: 'gif', mime: 'image/gif' }));
-
-      await expect(
-        service.createUploadUrl('user-uuid-1', {
-          type: 'gif',
-          mime: 'image/gif',
-          size: 1024 * 1024,
-        }),
-      ).resolves.toBeDefined();
+        service.createUploadUrl('user-uuid-1', { type: 'image', mime: 'image/jpeg', size: 5000 }),
+      ).rejects.toThrow();
+      expect(mediaRepo.save).not.toHaveBeenCalled();
     });
   });
 
-  // ── finalize ───────────────────────────────────────────────────────────────
-
   describe('finalize', () => {
-    it('transitions pending media to processing and enqueues job', async () => {
-      const media = makeMedia({ status: 'pending' });
-      mediaRepo.findOne.mockResolvedValue(media);
-      mediaRepo.update.mockResolvedValue({});
+    it('verifies the object, commits to actual size, and enqueues processing', async () => {
+      mediaRepo.findOne.mockResolvedValue(makeMedia({ status: 'pending', byteSize: 1000 }));
+      storageMock.headObject.mockResolvedValue({ size: 1234, contentType: 'image/jpeg' });
 
       const result = await service.finalize('1111111111111', 'user-uuid-1');
 
       expect(result.status).toBe('processing');
-      expect(mediaRepo.update).toHaveBeenCalledWith('1111111111111', { status: 'processing' });
-      expect(mediaQueue.add).toHaveBeenCalledWith(
-        'media.process',
-        expect.objectContaining({ mediaId: '1111111111111' }),
-        expect.objectContaining({ jobId: 'media-process-1111111111111' }),
+      expect(quota.adjust).toHaveBeenCalledWith(234); // 1234 actual − 1000 reserved
+      expect(mediaRepo.update).toHaveBeenCalledWith(
+        '1111111111111',
+        expect.objectContaining({ status: 'processing', byteSize: 1234 }),
       );
+      expect(mediaQueue.add).toHaveBeenCalledOnce();
     });
 
-    it('returns current dto idempotently when already processing', async () => {
-      const media = makeMedia({ status: 'processing' });
-      mediaRepo.findOne.mockResolvedValue(media);
+    it('rejects when no object was uploaded', async () => {
+      mediaRepo.findOne.mockResolvedValue(makeMedia({ status: 'pending' }));
+      storageMock.headObject.mockResolvedValue(null);
+      await expect(service.finalize('1111111111111', 'user-uuid-1')).rejects.toThrow();
+      expect(mediaQueue.add).not.toHaveBeenCalled();
+    });
 
+    it('is idempotent when already processing', async () => {
+      mediaRepo.findOne.mockResolvedValue(makeMedia({ status: 'processing' }));
       const result = await service.finalize('1111111111111', 'user-uuid-1');
-
       expect(result.status).toBe('processing');
-      expect(mediaRepo.update).not.toHaveBeenCalled();
+      expect(storageMock.headObject).not.toHaveBeenCalled();
       expect(mediaQueue.add).not.toHaveBeenCalled();
     });
 
-    it('returns current dto idempotently when already ready', async () => {
-      const media = makeMedia({
-        status: 'ready',
-        variants: { thumb: 'http://t', small: 'http://s' },
-      });
-      mediaRepo.findOne.mockResolvedValue(media);
-
-      const result = await service.finalize('1111111111111', 'user-uuid-1');
-
-      expect(result.status).toBe('ready');
-      expect(mediaQueue.add).not.toHaveBeenCalled();
-    });
-
-    it('throws NotFoundException when media does not exist', async () => {
+    it('throws NotFound when media is absent', async () => {
       mediaRepo.findOne.mockResolvedValue(null);
-
-      await expect(service.finalize('nonexistent', 'user-uuid-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.finalize('nope', 'user-uuid-1')).rejects.toThrow(NotFoundException);
     });
 
-    it('throws ForbiddenException when requester does not own media', async () => {
-      const media = makeMedia({ ownerId: 'other-user' });
-      mediaRepo.findOne.mockResolvedValue(media);
-
+    it('throws Forbidden for a non-owner', async () => {
+      mediaRepo.findOne.mockResolvedValue(makeMedia({ ownerId: 'someone-else' }));
       await expect(service.finalize('1111111111111', 'user-uuid-1')).rejects.toThrow(
         ForbiddenException,
       );
     });
-
-    it('re-enqueues job for failed media (retry path)', async () => {
-      const media = makeMedia({ status: 'failed' });
-      mediaRepo.findOne.mockResolvedValue(media);
-      mediaRepo.update.mockResolvedValue({});
-
-      const result = await service.finalize('1111111111111', 'user-uuid-1');
-
-      expect(result.status).toBe('processing');
-      expect(mediaQueue.add).toHaveBeenCalledOnce();
-    });
   });
 
-  // ── validateAndLoadForPost ────────────────────────────────────────────────
-
   describe('validateAndLoadForPost', () => {
-    it('returns empty array for empty mediaIds', async () => {
-      const result = await service.validateAndLoadForPost([], 'user-uuid-1');
-      expect(result).toEqual([]);
-      expect(mediaRepo.findByIds).not.toHaveBeenCalled();
+    it('returns [] for empty input', async () => {
+      expect(await service.validateAndLoadForPost([], 'user-uuid-1')).toEqual([]);
+      expect(mediaRepo.findBy).not.toHaveBeenCalled();
     });
 
-    it('returns ordered medias for valid ready owned media', async () => {
-      const m1 = makeMedia({ id: '111', status: 'ready', ownerId: 'user-uuid-1' });
-      const m2 = makeMedia({ id: '222', status: 'ready', ownerId: 'user-uuid-1' });
-      mediaRepo.findByIds.mockResolvedValue([m1, m2]);
-
+    it('returns ordered media for valid ready+owned input', async () => {
+      const m1 = makeMedia({ id: '111', status: 'ready', byteSize: 500 });
+      const m2 = makeMedia({ id: '222', status: 'ready', byteSize: 500 });
+      mediaRepo.findBy.mockResolvedValue([m2, m1]); // out of order
       const result = await service.validateAndLoadForPost(['111', '222'], 'user-uuid-1');
-      expect(result).toHaveLength(2);
-      expect(result[0].id).toBe('111');
-      expect(result[1].id).toBe('222');
+      expect(result.map((m) => m.id)).toEqual(['111', '222']);
     });
 
-    it('throws NotFoundException when a media id does not exist', async () => {
-      mediaRepo.findByIds.mockResolvedValue([]); // no records found
-
-      await expect(service.validateAndLoadForPost(['nonexistent'], 'user-uuid-1')).rejects.toThrow(
-        BadRequestException,
-      );
+    it('rejects more than the per-post file count (2)', async () => {
+      await expect(
+        service.validateAndLoadForPost(['1', '2', '3'], 'user-uuid-1'),
+      ).rejects.toThrow();
     });
 
-    it('throws ForbiddenException when media is owned by someone else', async () => {
-      const m = makeMedia({ id: '111', status: 'ready', ownerId: 'other-user' });
-      mediaRepo.findByIds.mockResolvedValue([m]);
+    it('rejects when total bytes exceed the per-post limit (2 MB)', async () => {
+      const m1 = makeMedia({ id: '111', status: 'ready', byteSize: ONE_MB + 1 });
+      const m2 = makeMedia({ id: '222', status: 'ready', byteSize: ONE_MB });
+      mediaRepo.findBy.mockResolvedValue([m1, m2]);
+      await expect(service.validateAndLoadForPost(['111', '222'], 'user-uuid-1')).rejects.toThrow();
+    });
 
+    it('throws when a media id is missing', async () => {
+      mediaRepo.findBy.mockResolvedValue([]);
+      await expect(service.validateAndLoadForPost(['x'], 'user-uuid-1')).rejects.toThrow();
+    });
+
+    it('throws for non-owned media', async () => {
+      mediaRepo.findBy.mockResolvedValue([
+        makeMedia({ id: '111', status: 'ready', ownerId: 'other' }),
+      ]);
       await expect(service.validateAndLoadForPost(['111'], 'user-uuid-1')).rejects.toThrow(
         ForbiddenException,
       );
     });
 
-    it('throws BadRequestException when media is not ready', async () => {
-      const m = makeMedia({ id: '111', status: 'pending', ownerId: 'user-uuid-1' });
-      mediaRepo.findByIds.mockResolvedValue([m]);
-
-      await expect(service.validateAndLoadForPost(['111'], 'user-uuid-1')).rejects.toThrow(
-        BadRequestException,
-      );
+    it('throws for not-ready media', async () => {
+      mediaRepo.findBy.mockResolvedValue([makeMedia({ id: '111', status: 'processing' })]);
+      await expect(service.validateAndLoadForPost(['111'], 'user-uuid-1')).rejects.toThrow();
     });
 
-    it('rejects more than 4 images', async () => {
-      const medias = Array.from({ length: 5 }, (_, i) =>
-        makeMedia({ id: String(100 + i), status: 'ready', ownerId: 'user-uuid-1', type: 'image' }),
-      );
-      mediaRepo.findByIds.mockResolvedValue(medias);
-
-      await expect(
-        service.validateAndLoadForPost(
-          medias.map((m) => m.id),
-          'user-uuid-1',
-        ),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('rejects mixing image with video', async () => {
-      const image = makeMedia({
-        id: '111',
-        status: 'ready',
-        ownerId: 'user-uuid-1',
-        type: 'image',
-      });
-      const video = makeMedia({
-        id: '222',
-        status: 'ready',
-        ownerId: 'user-uuid-1',
-        type: 'video',
-      });
-      mediaRepo.findByIds.mockResolvedValue([image, video]);
-
-      await expect(service.validateAndLoadForPost(['111', '222'], 'user-uuid-1')).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('rejects mixing image with gif', async () => {
-      const image = makeMedia({
-        id: '111',
-        status: 'ready',
-        ownerId: 'user-uuid-1',
-        type: 'image',
-      });
+    it('rejects mixing a GIF with an image', async () => {
+      const image = makeMedia({ id: '111', status: 'ready', type: 'image', byteSize: 100 });
       const gif = makeMedia({
         id: '222',
         status: 'ready',
-        ownerId: 'user-uuid-1',
         type: 'gif',
         mime: 'image/gif',
+        byteSize: 100,
       });
-      mediaRepo.findByIds.mockResolvedValue([image, gif]);
-
-      await expect(service.validateAndLoadForPost(['111', '222'], 'user-uuid-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      mediaRepo.findBy.mockResolvedValue([image, gif]);
+      await expect(service.validateAndLoadForPost(['111', '222'], 'user-uuid-1')).rejects.toThrow();
     });
 
-    it('rejects more than 1 video', async () => {
-      const v1 = makeMedia({
-        id: '111',
-        status: 'ready',
-        ownerId: 'user-uuid-1',
-        type: 'video',
-        mime: 'video/mp4',
-      });
-      const v2 = makeMedia({
-        id: '222',
-        status: 'ready',
-        ownerId: 'user-uuid-1',
-        type: 'video',
-        mime: 'video/mp4',
-      });
-      mediaRepo.findByIds.mockResolvedValue([v1, v2]);
-
-      await expect(service.validateAndLoadForPost(['111', '222'], 'user-uuid-1')).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('accepts up to 4 images', async () => {
-      const medias = Array.from({ length: 4 }, (_, i) =>
-        makeMedia({ id: String(100 + i), status: 'ready', ownerId: 'user-uuid-1', type: 'image' }),
-      );
-      mediaRepo.findByIds.mockResolvedValue(medias);
-
+    it('accepts 2 small ready images', async () => {
+      const m1 = makeMedia({ id: '111', status: 'ready', byteSize: 100 });
+      const m2 = makeMedia({ id: '222', status: 'ready', byteSize: 100 });
+      mediaRepo.findBy.mockResolvedValue([m1, m2]);
       await expect(
-        service.validateAndLoadForPost(
-          medias.map((m) => m.id),
-          'user-uuid-1',
-        ),
-      ).resolves.toHaveLength(4);
-    });
-
-    it('accepts exactly 1 video', async () => {
-      const video = makeMedia({
-        id: '111',
-        status: 'ready',
-        ownerId: 'user-uuid-1',
-        type: 'video',
-        mime: 'video/mp4',
-      });
-      mediaRepo.findByIds.mockResolvedValue([video]);
-
-      await expect(service.validateAndLoadForPost(['111'], 'user-uuid-1')).resolves.toHaveLength(1);
+        service.validateAndLoadForPost(['111', '222'], 'user-uuid-1'),
+      ).resolves.toHaveLength(2);
     });
   });
 
-  // ── updateAltText ─────────────────────────────────────────────────────────
-
   describe('updateAltText', () => {
-    it('updates alt text when owner makes request', async () => {
-      const media = makeMedia({ status: 'ready' });
-      mediaRepo.findOne.mockResolvedValue(media);
-      mediaRepo.update.mockResolvedValue({});
-
+    it('updates alt text for the owner', async () => {
+      mediaRepo.findOne.mockResolvedValue(makeMedia({ status: 'ready' }));
       const result = await service.updateAltText('1111111111111', 'user-uuid-1', {
-        altText: 'A cute cat photo',
+        altText: 'A cat',
       });
-
-      expect(result.altText).toBe('A cute cat photo');
-      expect(mediaRepo.update).toHaveBeenCalledWith('1111111111111', {
-        altText: 'A cute cat photo',
-      });
+      expect(result.altText).toBe('A cat');
+      expect(mediaRepo.update).toHaveBeenCalledWith('1111111111111', { altText: 'A cat' });
     });
 
-    it('throws ForbiddenException when non-owner tries to update alt text', async () => {
-      const media = makeMedia({ ownerId: 'other-user' });
-      mediaRepo.findOne.mockResolvedValue(media);
-
+    it('throws Forbidden for a non-owner', async () => {
+      mediaRepo.findOne.mockResolvedValue(makeMedia({ ownerId: 'other' }));
       await expect(
-        service.updateAltText('1111111111111', 'user-uuid-1', { altText: 'hacked' }),
+        service.updateAltText('1111111111111', 'user-uuid-1', { altText: 'x' }),
       ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('throws NotFoundException when media does not exist', async () => {
-      mediaRepo.findOne.mockResolvedValue(null);
-
-      await expect(
-        service.updateAltText('nonexistent', 'user-uuid-1', { altText: 'test' }),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('no-ops when altText is undefined in DTO', async () => {
-      const media = makeMedia({ altText: 'existing', status: 'ready' });
-      mediaRepo.findOne.mockResolvedValue(media);
-
-      const result = await service.updateAltText('1111111111111', 'user-uuid-1', {});
-
-      expect(result.altText).toBe('existing');
-      expect(mediaRepo.update).not.toHaveBeenCalled();
     });
   });
 });

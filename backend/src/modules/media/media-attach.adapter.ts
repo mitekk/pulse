@@ -1,15 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AttachedMediaItem, MediaAttachPort } from '../posts/media-attach.port';
 import { MediaService } from './media.service';
+import { STORAGE_PORT, StoragePort } from '../../infra/storage/storage.port';
+import { serializeVariants } from './media-url.util';
 
 /**
  * MediaAttachAdapter — real implementation of MediaAttachPort.
- * Delegates to MediaService.validateAndLoadForPost.
- * Registered globally in MediaModule so PostsService picks it up.
+ * Validates via MediaService and serializes variant keys → public URLs so the
+ * post-create response carries usable media URLs.
  */
 @Injectable()
 export class MediaAttachAdapter implements MediaAttachPort {
-  constructor(private readonly mediaService: MediaService) {}
+  constructor(
+    private readonly mediaService: MediaService,
+    @Inject(STORAGE_PORT) private readonly storage: StoragePort,
+  ) {}
 
   async validateAndLoad(mediaIds: string[], postAuthorId: string): Promise<AttachedMediaItem[]> {
     const medias = await this.mediaService.validateAndLoadForPost(mediaIds, postAuthorId);
@@ -21,7 +26,7 @@ export class MediaAttachAdapter implements MediaAttachPort {
       height: m.height,
       durationMs: m.durationMs,
       altText: m.altText,
-      variants: m.variants,
+      variants: serializeVariants(m.variants, this.storage),
     }));
   }
 }

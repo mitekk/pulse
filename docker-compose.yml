@@ -129,6 +129,16 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-tweeter-media}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      # Public-read base for serving media (keys → URLs at read time). Defaults to
+      # the public MinIO endpoint + bucket; set to a CDN origin in prod.
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:9000/tweeter-media}
+      # Media limits (only config differs dev↔prod).
+      MEDIA_MAX_FILES_PER_POST: ${MEDIA_MAX_FILES_PER_POST:-2}
+      MEDIA_MAX_BYTES_PER_FILE: ${MEDIA_MAX_BYTES_PER_FILE:-1048576}
+      MEDIA_MAX_BYTES_PER_POST: ${MEDIA_MAX_BYTES_PER_POST:-2097152}
+      MEDIA_GLOBAL_CAP_BYTES: ${MEDIA_GLOBAL_CAP_BYTES:-524288000}
+      MEDIA_SOFT_THRESHOLD_PCT: ${MEDIA_SOFT_THRESHOLD_PCT:-80}
       SNOWFLAKE_MACHINE_ID: ${SNOWFLAKE_MACHINE_ID:-0}
       CELEBRITY_FOLLOWER_THRESHOLD: ${CELEBRITY_FOLLOWER_THRESHOLD:-10000}
     ports:

@@ -3,10 +3,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { Media } from './media.entity';
 import { PostMedia } from './post-media.entity';
+import { StorageUsage } from './storage-usage.entity';
 import { MediaService } from './media.service';
 import { MediaController } from './media.controller';
 import { MediaProcessProcessor } from './media-process.processor';
 import { MediaAttachAdapter } from './media-attach.adapter';
+import { MediaLimits } from './media-limits';
+import { QuotaService } from './quota.service';
+import { MediaReaperService } from './media-reaper.service';
+import { MediaHydrationService } from './media-hydration.service';
 import { MEDIA_ATTACH_PORT } from '../posts/media-attach.port';
 import { StorageModule } from '../../infra/storage/storage.module';
 import { AuthModule } from '../auth/auth.module';
@@ -29,7 +34,7 @@ import { AuthModule } from '../auth/auth.module';
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Media, PostMedia]),
+    TypeOrmModule.forFeature([Media, PostMedia, StorageUsage]),
     BullModule.registerQueue({ name: 'media' }),
     StorageModule,
     AuthModule,
@@ -39,11 +44,15 @@ import { AuthModule } from '../auth/auth.module';
     MediaService,
     MediaProcessProcessor,
     MediaAttachAdapter,
+    MediaLimits,
+    QuotaService,
+    MediaReaperService,
+    MediaHydrationService,
     {
       provide: MEDIA_ATTACH_PORT,
       useClass: MediaAttachAdapter,
     },
   ],
-  exports: [MediaService, TypeOrmModule, MEDIA_ATTACH_PORT],
+  exports: [MediaService, QuotaService, MediaHydrationService, TypeOrmModule, MEDIA_ATTACH_PORT],
 })
 export class MediaModule {}

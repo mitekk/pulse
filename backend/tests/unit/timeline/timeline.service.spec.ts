@@ -308,6 +308,7 @@ function buildService(deps: ServiceDeps = {}) {
     viewerFlagsService as never,
     entityExtractor as never,
     postCacheService as never,
+    { apply: vi.fn().mockResolvedValue(undefined) } as never, // mediaHydration
     configService as never,
   );
 

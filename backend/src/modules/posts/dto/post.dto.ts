@@ -71,6 +71,8 @@ export interface PostDto {
 export interface PostMediaDto {
   id: string;
   type: 'image' | 'gif' | 'video';
+  /** Processing lifecycle — the client renders a placeholder when not 'ready'. */
+  status: 'pending' | 'processing' | 'ready' | 'failed';
   variants: {
     thumb?: string;
     small?: string;

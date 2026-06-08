@@ -6,6 +6,8 @@ import { Job } from 'bullmq';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs/promises';
+import { createWriteStream } from 'fs';
+import { pipeline } from 'stream/promises';
 import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
 import { Media, MediaVariants } from './media.entity';
@@ -124,8 +126,7 @@ export class MediaProcessProcessor extends WorkerHost {
 
       const variantKey = this.variantKey(media, name);
       await this.uploadFile(variantPath, variantKey, 'image/jpeg');
-      const { url } = await this.storage.getPresignedDownloadUrl(variantKey, 86400 * 365);
-      variants[name] = url;
+      variants[name] = variantKey; // store KEY; public URL derived at read time
     }
 
     await this.mediaRepo.update(media.id, {
@@ -154,7 +155,6 @@ export class MediaProcessProcessor extends WorkerHost {
 
     const thumbKey = this.variantKey(media, 'thumb');
     await this.uploadFile(thumbPath, thumbKey, 'image/jpeg');
-    const { url: thumbUrl } = await this.storage.getPresignedDownloadUrl(thumbKey, 86400 * 365);
 
     // Convert GIF → looping MP4 (web-friendly)
     const mp4Path = path.join(tmpDir, 'loop.mp4');
@@ -162,13 +162,12 @@ export class MediaProcessProcessor extends WorkerHost {
 
     const mp4Key = this.variantKey(media, 'mp4');
     await this.uploadFile(mp4Path, mp4Key, 'video/mp4');
-    const { url: mp4Url } = await this.storage.getPresignedDownloadUrl(mp4Key, 86400 * 365);
 
     await this.mediaRepo.update(media.id, {
       status: 'ready',
       width,
       height,
-      variants: { thumb: thumbUrl, mp4: mp4Url },
+      variants: { thumb: thumbKey, mp4: mp4Key },
     });
 
     this.logger.log(`GIF ${media.id} processed — thumb + mp4`);
@@ -189,7 +188,6 @@ export class MediaProcessProcessor extends WorkerHost {
 
     const mp4Key = this.variantKey(media, 'mp4');
     await this.uploadFile(mp4Path, mp4Key, 'video/mp4');
-    const { url: mp4Url } = await this.storage.getPresignedDownloadUrl(mp4Key, 86400 * 365);
 
     // Extract poster frame (first frame as JPEG)
     const posterPath = path.join(tmpDir, 'poster.jpg');
@@ -197,7 +195,6 @@ export class MediaProcessProcessor extends WorkerHost {
 
     const posterKey = this.variantKey(media, 'poster');
     await this.uploadFile(posterPath, posterKey, 'image/jpeg');
-    const { url: posterUrl } = await this.storage.getPresignedDownloadUrl(posterKey, 86400 * 365);
 
     // Thumbnail from poster
     const thumbPath = path.join(tmpDir, 'thumb.jpg');
@@ -208,14 +205,13 @@ export class MediaProcessProcessor extends WorkerHost {
 
     const thumbKey = this.variantKey(media, 'thumb');
     await this.uploadFile(thumbPath, thumbKey, 'image/jpeg');
-    const { url: thumbUrl } = await this.storage.getPresignedDownloadUrl(thumbKey, 86400 * 365);
 
     await this.mediaRepo.update(media.id, {
       status: 'ready',
       width,
       height,
       durationMs,
-      variants: { thumb: thumbUrl, mp4: mp4Url, poster: posterUrl },
+      variants: { thumb: thumbKey, mp4: mp4Key, poster: posterKey },
     });
 
     this.logger.log(`Video ${media.id} processed — mp4 + poster + thumb`);
@@ -293,27 +289,16 @@ export class MediaProcessProcessor extends WorkerHost {
   // ── Storage helpers ───────────────────────────────────────────────────────
 
   private async downloadFromStorage(key: string, destPath: string): Promise<void> {
-    // Use StoragePort to get a presigned download URL, then fetch + stream to file
-    const { url } = await this.storage.getPresignedDownloadUrl(key, 300);
-    const response = await fetch(url);
-    if (!response.ok || !response.body) {
-      throw new Error(`Failed to download ${key}: HTTP ${response.status}`);
-    }
-    const buffer = await response.arrayBuffer();
-    await fs.writeFile(destPath, Buffer.from(buffer));
+    // Server-side read via the internal endpoint (NOT a public presigned URL —
+    // that host is unreachable from inside the container). Stream to disk so
+    // large originals aren't buffered in memory.
+    const stream = await this.storage.getObjectStream(key);
+    await pipeline(stream, createWriteStream(destPath));
   }
 
   private async uploadFile(filePath: string, key: string, mime: string): Promise<void> {
-    const { uploadUrl } = await this.storage.getPresignedUploadUrl(key, mime, 600);
     const buffer = await fs.readFile(filePath);
-    const res = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': mime, 'Content-Length': String(buffer.length) },
-      body: buffer,
-    });
-    if (!res.ok) {
-      throw new Error(`Upload of ${key} failed: HTTP ${res.status}`);
-    }
+    await this.storage.putObject(key, buffer, mime);
   }
 
   private variantKey(media: Media, variant: string): string {
