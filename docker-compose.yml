@@ -22,12 +22,16 @@ services:
 
   redis:
     image: redis:7-alpine
+    # This Redis backs BullMQ queues and the feed/timeline sorted sets — i.e.
+    # semi-durable data, not a disposable cache. `noeviction` is therefore the
+    # correct policy: under memory pressure, fail writes loudly rather than let
+    # LRU silently drop queued jobs or feed entries (BullMQ requires noeviction).
     command:
       - "redis-server"
       - "--maxmemory"
-      - "256mb"
+      - "512mb"
       - "--maxmemory-policy"
-      - "allkeys-lru"
+      - "noeviction"
       - "--save"
       - ""
     healthcheck:
@@ -99,6 +103,7 @@ services:
       PORT: 3000
       DATABASE_URL: ${DATABASE_URL:-postgresql://tweeter:tweeter@db:5432/tweeter}
       DATABASE_SSL: ${DATABASE_SSL:-false}
+      DB_MIGRATIONS_RUN: ${DB_MIGRATIONS_RUN:-true}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
@@ -108,6 +113,10 @@ services:
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
+      # Public endpoint browsers use to PUT/GET presigned URLs (host-published).
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost}
+      MINIO_PUBLIC_PORT: ${MINIO_PUBLIC_PORT:-9000}
+      MINIO_PUBLIC_USE_SSL: ${MINIO_PUBLIC_USE_SSL:-false}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-tweeter-media}

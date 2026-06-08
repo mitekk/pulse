@@ -5,7 +5,9 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./backend/src:/app/src
-    command: ["npx", "tsx", "watch", "src/main.ts"]
+    # nest start --watch recompiles via tsc, emitting decorator metadata that
+    # NestJS DI and class-transformer require (tsx/esbuild cannot emit it).
+    command: ["npm", "run", "dev"]
     environment:
       NODE_ENV: development
       WEB_ORIGIN: http://localhost:5173

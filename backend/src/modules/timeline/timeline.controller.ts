@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { normalizeLimit } from '../../common/utils/pagination.util';
 import { TimelineService } from './timeline.service';
 import type { PostDto } from '../posts/dto/post.dto';
 
@@ -41,8 +42,8 @@ export class TimelineController {
     @Query('limit') limitStr?: string,
     @Query('cursor') cursor?: string,
   ): Promise<PaginatedPosts> {
-    const limit = limitStr ? parseInt(limitStr, 10) : 20;
-    return this.timelineService.getHomeFeed(user.id, isNaN(limit) ? 20 : limit, cursor);
+    const limit = normalizeLimit(limitStr);
+    return this.timelineService.getHomeFeed(user.id, limit, cursor);
   }
 
   // ── Hashtag timeline ──────────────────────────────────────────────────────
@@ -55,13 +56,8 @@ export class TimelineController {
     @Query('limit') limitStr?: string,
     @Query('cursor') cursor?: string,
   ): Promise<PaginatedPosts> {
-    const limit = limitStr ? parseInt(limitStr, 10) : 20;
-    return this.timelineService.getHashtagTimeline(
-      tag,
-      user?.id ?? null,
-      isNaN(limit) ? 20 : limit,
-      cursor,
-    );
+    const limit = normalizeLimit(limitStr);
+    return this.timelineService.getHashtagTimeline(tag, user?.id ?? null, limit, cursor);
   }
 
   // ── User timeline tabs ────────────────────────────────────────────────────
@@ -74,13 +70,8 @@ export class TimelineController {
     @Query('limit') limitStr?: string,
     @Query('cursor') cursor?: string,
   ): Promise<PaginatedPosts> {
-    const limit = limitStr ? parseInt(limitStr, 10) : 20;
-    return this.timelineService.getUserPosts(
-      handle,
-      user?.id ?? null,
-      isNaN(limit) ? 20 : limit,
-      cursor,
-    );
+    const limit = normalizeLimit(limitStr);
+    return this.timelineService.getUserPosts(handle, user?.id ?? null, limit, cursor);
   }
 
   @UseGuards(OptionalAuthGuard)
@@ -91,13 +82,8 @@ export class TimelineController {
     @Query('limit') limitStr?: string,
     @Query('cursor') cursor?: string,
   ): Promise<PaginatedPosts> {
-    const limit = limitStr ? parseInt(limitStr, 10) : 20;
-    return this.timelineService.getUserReplies(
-      handle,
-      user?.id ?? null,
-      isNaN(limit) ? 20 : limit,
-      cursor,
-    );
+    const limit = normalizeLimit(limitStr);
+    return this.timelineService.getUserReplies(handle, user?.id ?? null, limit, cursor);
   }
 
   @UseGuards(OptionalAuthGuard)
@@ -108,13 +94,8 @@ export class TimelineController {
     @Query('limit') limitStr?: string,
     @Query('cursor') cursor?: string,
   ): Promise<PaginatedPosts> {
-    const limit = limitStr ? parseInt(limitStr, 10) : 20;
-    return this.timelineService.getUserMedia(
-      handle,
-      user?.id ?? null,
-      isNaN(limit) ? 20 : limit,
-      cursor,
-    );
+    const limit = normalizeLimit(limitStr);
+    return this.timelineService.getUserMedia(handle, user?.id ?? null, limit, cursor);
   }
 
   @UseGuards(OptionalAuthGuard)
@@ -125,12 +106,7 @@ export class TimelineController {
     @Query('limit') limitStr?: string,
     @Query('cursor') cursor?: string,
   ): Promise<PaginatedPosts> {
-    const limit = limitStr ? parseInt(limitStr, 10) : 20;
-    return this.timelineService.getUserLikes(
-      handle,
-      user?.id ?? null,
-      isNaN(limit) ? 20 : limit,
-      cursor,
-    );
+    const limit = normalizeLimit(limitStr);
+    return this.timelineService.getUserLikes(handle, user?.id ?? null, limit, cursor);
   }
 }

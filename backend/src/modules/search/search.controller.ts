@@ -3,6 +3,7 @@ import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RateLimit } from '../../common/decorators/rate-limit.decorator';
+import { normalizeLimit } from '../../common/utils/pagination.util';
 import { SearchService } from './search.service';
 
 interface AuthUser {
@@ -41,7 +42,7 @@ export class SearchController {
         error: { code: 'MISSING_QUERY', message: 'q parameter is required' },
       });
     }
-    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+    const limit = normalizeLimit(limitStr);
     const result = await this.searchService.search({
       q,
       type,
@@ -71,7 +72,7 @@ export class SearchController {
         error: { code: 'MISSING_QUERY', message: 'q parameter is required' },
       });
     }
-    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+    const limit = normalizeLimit(limitStr);
     const result = await this.searchService.suggest({
       q,
       viewerId: viewer?.id ?? null,

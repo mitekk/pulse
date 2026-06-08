@@ -14,7 +14,11 @@ import { resolve } from 'path';
         entities: [resolve(__dirname, '../../modules/**/*.entity{.ts,.js}')],
         migrations: [resolve(__dirname, './migrations/*{.ts,.js}')],
         synchronize: false,
-        migrationsRun: false,
+        // Auto-apply pending migrations on boot so a fresh `docker compose up`
+        // comes up with a ready schema. Idempotent (TypeORM tracks applied
+        // migrations); set DB_MIGRATIONS_RUN=false to opt out (e.g. multi-instance
+        // deploys that run migrations as a separate step).
+        migrationsRun: config.get<string>('DB_MIGRATIONS_RUN') !== 'false',
         logging: config.get<string>('NODE_ENV') !== 'production',
         ssl: config.get<string>('DATABASE_SSL') === 'true' ? { rejectUnauthorized: false } : false,
       }),

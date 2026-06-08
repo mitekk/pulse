@@ -15,6 +15,7 @@ import { AuthGuard } from '../../common/guards/auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { RateLimit } from '../../common/decorators/rate-limit.decorator';
+import { normalizeLimit } from '../../common/utils/pagination.util';
 import { AccessTokenPayload } from '../auth/auth.service';
 import { MessagingService } from './messaging.service';
 import {
@@ -61,7 +62,7 @@ export class MessagingController {
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: number,
   ): Promise<{ items: unknown[]; cursor: string | null; hasMore: boolean }> {
-    return this.messagingService.listConversations(user.id, limit ?? 20, cursor);
+    return this.messagingService.listConversations(user.id, normalizeLimit(limit), cursor);
   }
 
   /**
@@ -98,7 +99,12 @@ export class MessagingController {
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: number,
   ): Promise<{ items: unknown[]; cursor: string | null; hasMore: boolean }> {
-    return this.messagingService.getMessages(user.id, conversationId, limit ?? 20, cursor);
+    return this.messagingService.getMessages(
+      user.id,
+      conversationId,
+      normalizeLimit(limit),
+      cursor,
+    );
   }
 
   /**

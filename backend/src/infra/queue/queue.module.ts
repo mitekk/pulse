@@ -17,7 +17,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       useFactory: (config: ConfigService) => ({
         connection: {
           url: config.get<string>('REDIS_URL') ?? 'redis://localhost:6379',
-          maxRetriesPerRequest: 3,
+          // BullMQ requires this to be null — its blocking worker commands must
+          // not give up after N retries, or the queue silently stalls.
+          maxRetriesPerRequest: null,
         },
         defaultJobOptions: {
           attempts: 3,

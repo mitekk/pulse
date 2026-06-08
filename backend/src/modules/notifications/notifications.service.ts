@@ -439,7 +439,7 @@ export class NotificationsService {
 
     // 7. Enqueue delivery job
     await this.notifyQueue
-      .add('notify.deliver', { notificationId: id, recipientId }, { jobId: `notif:${id}` })
+      .add('notify.deliver', { notificationId: id, recipientId }, { jobId: `notif-${id}` })
       .catch((e) => this.logger.warn(`notify.deliver enqueue failed: ${String(e)}`));
 
     return notif;

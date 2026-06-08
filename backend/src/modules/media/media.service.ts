@@ -156,7 +156,7 @@ export class MediaService {
         'media.process',
         { mediaId, ownerId: requesterId },
         {
-          jobId: `media.process:${mediaId}`,
+          jobId: `media-process-${mediaId}`,
           attempts: 3,
           backoff: { type: 'exponential', delay: 5000 },
         },

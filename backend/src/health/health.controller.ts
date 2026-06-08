@@ -30,7 +30,10 @@ export class HealthController {
 
   private async checkDb(): Promise<'ok' | 'error'> {
     try {
-      await this.dataSource.query('SELECT 1');
+      // Probe a core application table (not just `SELECT 1`) so a connected-but-
+      // unmigrated database reports `error` instead of falsely "ok". LIMIT 0
+      // returns no rows but still fails if the relation does not exist.
+      await this.dataSource.query('SELECT 1 FROM users LIMIT 0');
       return 'ok';
     } catch {
       return 'error';

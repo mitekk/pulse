@@ -4,8 +4,6 @@ import { AuthModule } from '../auth/auth.module';
 import { Block } from './block.entity';
 import { Follow } from './follow.entity';
 import { Mute } from './mute.entity';
-import { NoopNotificationService } from './noop-notification.service';
-import { NOTIFICATION_PORT } from './notification.port';
 import { User } from './user.entity';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
@@ -21,10 +19,8 @@ import { VisibilityService } from './visibility.service';
   providers: [
     UsersService,
     VisibilityService,
-    {
-      provide: NOTIFICATION_PORT,
-      useClass: NoopNotificationService,
-    },
+    // NOTIFICATION_PORT resolves from the @Global NotificationsModule
+    // (RealNotificationService) — no local binding needed.
   ],
   exports: [
     UsersService,

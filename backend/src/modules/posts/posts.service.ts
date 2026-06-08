@@ -311,11 +311,11 @@ export class PostsService {
 
     // ── Enqueue fanout + search jobs ──────────────────────────────────────
     await this.fanoutQueue
-      .add('fanout.post', { postId: id, authorId }, { jobId: `fanout:${id}` })
+      .add('fanout.post', { postId: id, authorId }, { jobId: `fanout-${id}` })
       .catch((e) => this.logger.warn(`fanout job enqueue failed: ${String(e)}`));
 
     await this.searchQueue
-      .add('search.index', { postId: id, action: 'upsert' }, { jobId: `search:${id}` })
+      .add('search.index', { postId: id, action: 'upsert' }, { jobId: `search-${id}` })
       .catch((e) => this.logger.warn(`search job enqueue failed: ${String(e)}`));
 
     // ── Build and return PostDto ───────────────────────────────────────────
@@ -418,7 +418,7 @@ export class PostsService {
       .add(
         'fanout.post',
         { postId: id, authorId, repostOf: originalPostId },
-        { jobId: `fanout:${id}` },
+        { jobId: `fanout-${id}` },
       )
       .catch((e) => this.logger.warn(`fanout repost job failed: ${String(e)}`));
 
@@ -566,7 +566,7 @@ export class PostsService {
     });
 
     await this.searchQueue
-      .add('search.index', { postId, action: 'delete' }, { jobId: `search:del:${postId}` })
+      .add('search.index', { postId, action: 'delete' }, { jobId: `search-del-${postId}` })
       .catch((e) => this.logger.warn(`search delete job failed: ${String(e)}`));
   }
 

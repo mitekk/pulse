@@ -8,8 +8,6 @@ import { ConversationDyad } from './conversation-dyad.entity';
 import { Message } from './message.entity';
 import { MessagingService } from './messaging.service';
 import { MessagingController } from './messaging.controller';
-import { NoopDmNotificationService } from './noop-dm-notification.service';
-import { DM_NOTIFICATION_PORT } from './dm-notification.port';
 import { REALTIME_PUBLISHER_PORT } from '../timeline/realtime-publisher.port';
 import { User } from '../users/user.entity';
 import { Follow } from '../users/follow.entity';
@@ -42,10 +40,8 @@ import { Block } from '../users/block.entity';
   controllers: [MessagingController],
   providers: [
     MessagingService,
-    {
-      provide: DM_NOTIFICATION_PORT,
-      useClass: NoopDmNotificationService,
-    },
+    // DM_NOTIFICATION_PORT resolves from the @Global NotificationsModule
+    // (RealDmNotificationService) — no local binding needed.
     // Noop default for REALTIME_PUBLISHER_PORT — AppModule overrides with the real
     // RealtimePublisherService once RealtimeModule is loaded.
     {

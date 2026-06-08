@@ -56,9 +56,18 @@ export class AuthGuard implements CanActivate {
       const secret = this.config.get<string>('JWT_ACCESS_SECRET') ?? 'change-me-in-production';
       const payload = this.jwtService.verify<AccessTokenPayload>(token, { secret });
 
+      // Reject access tokens whose session was revoked (logout / session revoke),
+      // even though the JWT signature is still cryptographically valid.
+      if (await this.authService.isSessionRevoked(payload.sessionId)) {
+        throw new UnauthorizedException({
+          error: { code: 'SESSION_REVOKED', message: 'Session has been revoked.' },
+        });
+      }
+
       // Attach to request so @CurrentUser() can extract it
       request.user = { ...payload, id: payload.sub };
     } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
       this.logger.debug(`JWT verification failed: ${String(err)}`);
       throw new UnauthorizedException({
         error: { code: 'INVALID_TOKEN', message: 'Invalid or expired access token.' },

@@ -10,10 +10,7 @@ import { EngagementController } from './engagement.controller';
 import { ViewerFlagsService } from './viewer-flags.service';
 import { ViewerFlagsAdapter } from './viewer-flags.adapter';
 import { CountersReconcileProcessor } from './counters-reconcile.processor';
-import { NoopPostsNotificationService } from '../posts/noop-posts-notification.service';
-import { POSTS_NOTIFICATION_PORT } from '../posts/posts-notification.port';
 import { VIEWER_FLAGS_PORT } from '../posts/viewer-flags.port';
-import { PostsModule } from '../posts/posts.module';
 import { AuthModule } from '../auth/auth.module';
 
 /**
@@ -39,10 +36,12 @@ import { AuthModule } from '../auth/auth.module';
 @Global()
 @Module({
   imports: [
+    // Post entity comes from forFeature (not PostsModule) so this module has no
+    // dependency on PostsModule — PostsModule imports EngagementModule for the
+    // real VIEWER_FLAGS_PORT, and a back-import would form a cycle.
     TypeOrmModule.forFeature([Like, Bookmark, Post]),
     BullModule.registerQueue({ name: 'counters' }),
     AuthModule,
-    PostsModule, // imports PostsModule to get Post entity + auth guards
   ],
   controllers: [EngagementController],
   providers: [
@@ -50,11 +49,8 @@ import { AuthModule } from '../auth/auth.module';
     ViewerFlagsService,
     ViewerFlagsAdapter,
     CountersReconcileProcessor,
-    {
-      provide: POSTS_NOTIFICATION_PORT,
-      useClass: NoopPostsNotificationService,
-    },
-    // Override the noop from PostsModule — global scope means this wins
+    // POSTS_NOTIFICATION_PORT resolves from the @Global NotificationsModule.
+    // Real viewer flags — consumed by PostsService via VIEWER_FLAGS_PORT.
     {
       provide: VIEWER_FLAGS_PORT,
       useClass: ViewerFlagsAdapter,

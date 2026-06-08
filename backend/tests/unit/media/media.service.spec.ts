@@ -185,7 +185,7 @@ describe('MediaService', () => {
       expect(mediaQueue.add).toHaveBeenCalledWith(
         'media.process',
         expect.objectContaining({ mediaId: '1111111111111' }),
-        expect.objectContaining({ jobId: 'media.process:1111111111111' }),
+        expect.objectContaining({ jobId: 'media-process-1111111111111' }),
       );
     });
 

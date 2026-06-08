@@ -55,19 +55,38 @@ export class AllExceptionsFilter implements ExceptionFilter {
         code = this.statusToCode(status);
       } else if (typeof response === 'object' && response !== null) {
         const resp = response as Record<string, unknown>;
-        message = typeof resp['message'] === 'string' ? resp['message'] : message;
-        code =
-          typeof resp['error'] === 'string'
-            ? this.toScreamingSnake(resp['error'])
-            : this.statusToCode(status);
 
-        // class-validator ValidationPipe produces an array of constraint messages
-        if (Array.isArray(resp['message'])) {
-          details = (resp['message'] as string[]).map((msg) => ({ message: msg }));
-          message = 'Validation failed';
-          code = 'VALIDATION_ERROR';
+        // Services throw the pre-built envelope `{ error: { code, message, details } }`.
+        // Honor it directly so the specific code/message survive to the client
+        // instead of being flattened to a generic status-derived error.
+        const envelope = resp['error'];
+        if (typeof envelope === 'object' && envelope !== null && 'code' in envelope) {
+          const err = envelope as Partial<ErrorEnvelope['error']>;
+          code = typeof err.code === 'string' ? err.code : this.statusToCode(status);
+          message = typeof err.message === 'string' ? err.message : message;
+          details = Array.isArray(err.details) ? err.details : undefined;
+        } else {
+          message = typeof resp['message'] === 'string' ? resp['message'] : message;
+          code =
+            typeof resp['error'] === 'string'
+              ? this.toScreamingSnake(resp['error'])
+              : this.statusToCode(status);
+
+          // class-validator ValidationPipe produces an array of constraint messages
+          if (Array.isArray(resp['message'])) {
+            details = (resp['message'] as string[]).map((msg) => ({ message: msg }));
+            message = 'Validation failed';
+            code = 'VALIDATION_ERROR';
+          }
         }
       }
+    } else if (this.isInvalidInputDbError(exception)) {
+      // Malformed input that reached the DB (e.g. a non-numeric value for a
+      // bigint id column → PG 22P02 / 22003). This is a client error, not a
+      // server fault — surface 400 without leaking the DB message.
+      status = HttpStatus.BAD_REQUEST;
+      code = 'INVALID_INPUT';
+      message = 'Invalid request parameter.';
     } else {
       // Programmer error — log with full detail but don't expose to client
       this.logger.error(
@@ -92,6 +111,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
     };
 
     httpAdapter.reply(ctx.getResponse(), body, status);
+  }
+
+  /**
+   * Detects TypeORM/pg errors caused by malformed client input that reached the
+   * database — invalid text for a typed column (22P02, e.g. non-numeric bigint id)
+   * or numeric out of range (22003). These are 400s, not 500s.
+   */
+  private isInvalidInputDbError(exception: unknown): boolean {
+    const code = (exception as { code?: unknown })?.code;
+    const driverCode = (exception as { driverError?: { code?: unknown } })?.driverError?.code;
+    return code === '22P02' || code === '22003' || driverCode === '22P02' || driverCode === '22003';
   }
 
   private statusToCode(status: number): string {

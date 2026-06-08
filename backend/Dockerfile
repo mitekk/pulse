@@ -27,6 +27,15 @@ RUN addgroup -S app && adduser -S app -G app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+# tsconfig.json + nest-cli.json are needed at runtime by the dev override
+# (`nest start --watch`), which recompiles via tsc so decorator metadata
+# (required by NestJS DI and class-transformer coercion) is emitted correctly.
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/nest-cli.json ./nest-cli.json
+
+# The dev override runs `nest start --watch` as the non-root app user, which
+# recompiles into ./dist on every change — so app must own the workdir.
+RUN chown -R app:app /app
 
 USER app
 

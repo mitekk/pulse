@@ -422,6 +422,12 @@ export default function PostPage() {
   const { ancestors, post, replies: initialReplies } = threadData
   const viewerReply = canViewerReply(post, user)
 
+  // The thread response pre-loads the first replies for instant render; the
+  // paginated repliesQuery also returns them on page 1. Filter those out so each
+  // reply renders exactly once (initialReplies first, then additional pages).
+  const initialReplyIds = new Set(initialReplies.map((r) => r.id))
+  const additionalReplies = repliesQuery.items.filter((r) => !initialReplyIds.has(r.id))
+
   return (
     <div data-testid="thread-view">
       {/* Back nav */}
@@ -524,9 +530,9 @@ export default function PostPage() {
           <PostCard key={reply.id} post={reply} />
         ))}
 
-        {/* Infinite replies (additional pages) */}
+        {/* Infinite replies (additional pages beyond the pre-loaded ones) */}
         <InfiniteList<PostDto>
-          items={repliesQuery.items}
+          items={additionalReplies}
           renderItem={(reply) => <PostCard key={reply.id} post={reply} />}
           sentinelRef={repliesQuery.sentinelRef}
           status={repliesQuery.status}

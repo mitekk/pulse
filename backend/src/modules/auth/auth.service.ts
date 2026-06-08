@@ -14,6 +14,7 @@ import * as crypto from 'crypto';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { SnowflakeUtil } from '../../common/utils/snowflake.util';
+import { RedisService } from '../../infra/redis/redis.service';
 import { EmailVerificationToken } from './email-verification-token.entity';
 import { MAILER_PORT, MailerPort } from './mailer.port';
 import { Session } from './session.entity';
@@ -38,6 +39,16 @@ export interface TokenPair {
 
 /** How long a verification token stays valid */
 const EMAIL_TOKEN_EXPIRY_MINUTES = 60;
+
+/** Parse a JWT-style duration ('15m', '30d', '900s', '1h') to seconds. */
+function parseDurationSeconds(value: string, fallback: number): number {
+  const match = /^(\d+)\s*([smhd])?$/.exec(value.trim());
+  if (!match) return fallback;
+  const n = Number(match[1]);
+  const unit = match[2] ?? 's';
+  const mult = unit === 'd' ? 86400 : unit === 'h' ? 3600 : unit === 'm' ? 60 : 1;
+  return n * mult;
+}
 
 /**
  * argon2id options (cost factor ≥ 12 per security.md + ADR-0003).
@@ -66,12 +77,53 @@ export class AuthService {
     private readonly evtRepo: Repository<EmailVerificationToken>,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly redis: RedisService,
     @Inject(MAILER_PORT)
     private readonly mailer: MailerPort,
   ) {
     this.accessSecret = this.config.get<string>('JWT_ACCESS_SECRET') ?? 'change-me-in-production';
     this.accessExpiry = this.config.get<string>('JWT_ACCESS_EXPIRY') ?? '15m';
     this.refreshExpiry = this.config.get<string>('JWT_REFRESH_EXPIRY') ?? '30d';
+    // Denylist TTL must cover the access-token lifetime so a revoked session's
+    // still-unexpired access token can't be replayed after logout.
+    this.revokedSessionTtl = parseDurationSeconds(this.accessExpiry, 900);
+  }
+
+  private readonly revokedSessionTtl: number;
+
+  private static readonly REVOKED_SESSION_PREFIX = 'auth:revoked-session:';
+
+  /**
+   * Add a session to the Redis revocation denylist. The AuthGuard consults this
+   * on every request, so a revoked session's (still-unexpired) access JWT is
+   * rejected immediately rather than working until its natural expiry.
+   */
+  private async denylistSession(sessionId: string): Promise<void> {
+    try {
+      await this.redis.client.set(
+        `${AuthService.REVOKED_SESSION_PREFIX}${sessionId}`,
+        '1',
+        'EX',
+        this.revokedSessionTtl,
+      );
+    } catch (err) {
+      this.logger.error(`Failed to denylist session ${sessionId}: ${String(err)}`);
+    }
+  }
+
+  /** True if the session has been revoked (logout / explicit revoke). */
+  async isSessionRevoked(sessionId: string): Promise<boolean> {
+    try {
+      const hit = await this.redis.client.exists(
+        `${AuthService.REVOKED_SESSION_PREFIX}${sessionId}`,
+      );
+      return hit === 1;
+    } catch (err) {
+      // Fail open: don't take down auth if Redis hiccups — the short-lived access
+      // token still expires on its own.
+      this.logger.warn(`Session revocation check failed (fail-open): ${String(err)}`);
+      return false;
+    }
   }
 
   // ── Registration ────────────────────────────────────────────────────────────
@@ -237,6 +289,7 @@ export class AuthService {
       .set({ revokedAt: new Date() })
       .where('id = :id AND revoked_at IS NULL', { id: sessionId })
       .execute();
+    await this.denylistSession(sessionId);
   }
 
   // ── Me ──────────────────────────────────────────────────────────────────────
@@ -277,6 +330,7 @@ export class AuthService {
     }
     session.revokedAt = new Date();
     await this.sessionRepo.save(session);
+    await this.denylistSession(sessionId);
   }
 
   // ── Email verification ───────────────────────────────────────────────────────

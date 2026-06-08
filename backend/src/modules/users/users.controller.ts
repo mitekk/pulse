@@ -16,6 +16,7 @@ import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { AuthenticatedUser, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RateLimit } from '../../common/decorators/rate-limit.decorator';
+import { normalizeLimit } from '../../common/utils/pagination.util';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 
@@ -62,7 +63,12 @@ export class UsersController {
     @Query('cursor') cursor: string | undefined,
     @Query('limit') limit = 20,
   ) {
-    return this.usersService.getFollowers(handle, viewer?.id ?? null, cursor, Number(limit));
+    return this.usersService.getFollowers(
+      handle,
+      viewer?.id ?? null,
+      cursor,
+      normalizeLimit(limit),
+    );
   }
 
   /**
@@ -76,7 +82,12 @@ export class UsersController {
     @Query('cursor') cursor: string | undefined,
     @Query('limit') limit = 20,
   ) {
-    return this.usersService.getFollowing(handle, viewer?.id ?? null, cursor, Number(limit));
+    return this.usersService.getFollowing(
+      handle,
+      viewer?.id ?? null,
+      cursor,
+      normalizeLimit(limit),
+    );
   }
 
   // ─── Follow / Unfollow ─────────────────────────────────────────────────────
@@ -166,7 +177,7 @@ export class UsersController {
     @Query('cursor') cursor: string | undefined,
     @Query('limit') limit = 20,
   ) {
-    return this.usersService.getFollowRequests(user.id, cursor, Number(limit));
+    return this.usersService.getFollowRequests(user.id, cursor, normalizeLimit(limit));
   }
 
   /**

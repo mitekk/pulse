@@ -16,6 +16,12 @@ const DEFAULT_DOWNLOAD_EXPIRY = 3600; // 1 hour
 export class MinioStorageService implements StoragePort, OnModuleInit {
   private readonly logger = new Logger(MinioStorageService.name);
   private readonly client: Minio.Client;
+  // Presigned URLs are SigV4-signed against the client's endpoint host, so a URL
+  // signed with the internal docker host (`minio:9000`) is both unreachable from
+  // a browser AND would fail signature validation if the host were rewritten.
+  // This second client is configured with the publicly reachable endpoint and is
+  // used ONLY to mint presigned upload/download URLs handed to clients.
+  private readonly presignClient: Minio.Client;
   private readonly bucket: string;
   private readonly endpointHost: string;
 
@@ -28,6 +34,13 @@ export class MinioStorageService implements StoragePort, OnModuleInit {
 
     this.bucket = config.get<string>('MINIO_BUCKET') ?? 'tweeter-media';
     this.endpointHost = endpoint;
+    // Setting region explicitly makes the SDK skip its getBucketRegion() network
+    // probe. That probe is what broke presigning against the public endpoint:
+    // the presign client points at the host-published address (localhost:9000),
+    // which is unreachable from *inside* the container, so the probe threw
+    // ECONNREFUSED before any URL was signed. With region set, no probe happens
+    // and the URL is signed offline for the public host.
+    const region = config.get<string>('MINIO_REGION') ?? 'us-east-1';
 
     this.client = new Minio.Client({
       endPoint: endpoint,
@@ -35,6 +48,24 @@ export class MinioStorageService implements StoragePort, OnModuleInit {
       useSSL,
       accessKey,
       secretKey,
+      region,
+    });
+
+    // Public endpoint for presigning — falls back to the internal endpoint when
+    // unset (e.g. local non-docker runs where they are the same host).
+    const publicEndpoint = config.get<string>('MINIO_PUBLIC_ENDPOINT') || endpoint;
+    const publicPort = config.get<number>('MINIO_PUBLIC_PORT') ?? port;
+    const publicUseSSL = config.get<string>('MINIO_PUBLIC_USE_SSL')
+      ? config.get<string>('MINIO_PUBLIC_USE_SSL') === 'true'
+      : useSSL;
+
+    this.presignClient = new Minio.Client({
+      endPoint: publicEndpoint,
+      port: publicPort,
+      useSSL: publicUseSSL,
+      accessKey,
+      secretKey,
+      region,
     });
   }
 
@@ -61,7 +92,7 @@ export class MinioStorageService implements StoragePort, OnModuleInit {
     _mimeType: string,
     expiresIn: number = DEFAULT_UPLOAD_EXPIRY,
   ): Promise<PresignedUploadResult> {
-    const uploadUrl = await this.client.presignedPutObject(this.bucket, key, expiresIn);
+    const uploadUrl = await this.presignClient.presignedPutObject(this.bucket, key, expiresIn);
 
     return {
       uploadUrl,
@@ -74,7 +105,7 @@ export class MinioStorageService implements StoragePort, OnModuleInit {
     key: string,
     expiresIn: number = DEFAULT_DOWNLOAD_EXPIRY,
   ): Promise<PresignedDownloadResult> {
-    const url = await this.client.presignedGetObject(this.bucket, key, expiresIn);
+    const url = await this.presignClient.presignedGetObject(this.bucket, key, expiresIn);
     return { url, expiresIn };
   }
 
