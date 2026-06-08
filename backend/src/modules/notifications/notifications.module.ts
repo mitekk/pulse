@@ -56,8 +56,10 @@ import { REALTIME_PUBLISHER_PORT } from '../timeline/realtime-publisher.port';
     { provide: POSTS_NOTIFICATION_PORT, useExisting: RealPostsNotificationService },
     { provide: NOTIFICATION_PORT, useExisting: RealNotificationService },
     { provide: DM_NOTIFICATION_PORT, useExisting: RealDmNotificationService },
-    // Noop default for REALTIME_PUBLISHER_PORT — AppModule overrides this with
-    // the real RealtimePublisherService once RealtimeModule is loaded.
+    // Noop REALTIME_PUBLISHER_PORT — notifications are persisted + served over
+    // REST but NOT pushed live over WS. Real impl: RealtimePublisherService
+    // (RealtimeModule). Currently unwired — see docs/known-limitations.md.
+    // (An "AppModule override" does not work for this module-scoped token.)
     {
       provide: REALTIME_PUBLISHER_PORT,
       useValue: {

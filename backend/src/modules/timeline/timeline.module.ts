@@ -31,13 +31,15 @@ import { AuthModule } from '../auth/auth.module';
  * here does NOT cause a double-registration conflict — BullMQ/BullModule
  * registers the queue once per process and the processor is added as a worker.
  *
- * REALTIME_PUBLISHER_PORT defaults to NoopRealtimePublisherService.
- * Subtask 8 (RealtimeModule) replaces this with the real Socket.IO gateway.
+ * REALTIME_PUBLISHER_PORT is bound to NoopRealtimePublisherService: timeline
+ * "new posts" pills are computed but NOT pushed live over WS. This seam is
+ * currently UNWIRED — see docs/known-limitations.md. The real impl is
+ * RealtimePublisherService (RealtimeModule); enable it by binding the token here
+ * (NOT via an "AppModule override", which does not work for module-scoped tokens).
  *
  * Exports:
- *   - TimelineService — consumed by subtask 8 for realtime integration
- *   - PostCacheService — consumed by subtask 8 for cache invalidation
- *   - REALTIME_PUBLISHER_PORT — export token so RealtimeModule can override
+ *   - TimelineService, PostCacheService
+ *   - REALTIME_PUBLISHER_PORT
  */
 @Module({
   imports: [

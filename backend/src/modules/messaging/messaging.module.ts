@@ -42,8 +42,10 @@ import { Block } from '../users/block.entity';
     MessagingService,
     // DM_NOTIFICATION_PORT resolves from the @Global NotificationsModule
     // (RealDmNotificationService) — no local binding needed.
-    // Noop default for REALTIME_PUBLISHER_PORT — AppModule overrides with the real
-    // RealtimePublisherService once RealtimeModule is loaded.
+    // Noop REALTIME_PUBLISHER_PORT — DM messages are persisted + served over REST
+    // but NOT pushed live over WS. Real impl: RealtimePublisherService
+    // (RealtimeModule). Currently unwired — see docs/known-limitations.md.
+    // (An "AppModule override" does not work for this module-scoped token.)
     {
       provide: REALTIME_PUBLISHER_PORT,
       useValue: {

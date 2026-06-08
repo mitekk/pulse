@@ -70,7 +70,7 @@ import { EngagementModule } from '../engagement/engagement.module';
     PostsService,
     EntityExtractorService,
     TypeOrmModule, // export entities for EngagementModule, TimelineModule, etc.
-    MEDIA_ATTACH_PORT, // exported so MediaModule can override in global scope
+    MEDIA_ATTACH_PORT, // currently bound to noop — see docs/known-limitations.md
     TRENDS_INCREMENT_PORT,
   ],
 })
