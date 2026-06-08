@@ -281,21 +281,26 @@ describe('POST /api/v1/auth/logout', () => {
   it('logs out and invalidates the session', async () => {
     const user = await createUser(app);
 
+    // Sanity: token is valid before logout
+    await http
+      .get('/api/v1/auth/sessions')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .expect(200);
+
+    // Logout revokes the session in DB and writes the Redis denylist key
     await http
       .post('/api/v1/auth/logout')
       .set('Authorization', `Bearer ${user.accessToken}`)
       .expect(204);
 
-    // After logout, /me should still return 200 (JWT is stateless within TTL)
-    // but session listing should show the session as revoked
-    const sessions = await http
+    // AuthGuard checks isSessionRevoked() on every protected request; the still-unexpired
+    // access JWT must now be rejected because the session is on the denylist.
+    const res = await http
       .get('/api/v1/auth/sessions')
       .set('Authorization', `Bearer ${user.accessToken}`)
-      .expect(200);
+      .expect(401);
 
-    // The session that was active should now be gone from the active list
-    // (or at most one session if reuse check scenario)
-    expect(sessions.body.items).toBeDefined();
+    expect(res.body.error?.code).toBe('SESSION_REVOKED');
   });
 });
 
