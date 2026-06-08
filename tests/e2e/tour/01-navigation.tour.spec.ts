@@ -29,7 +29,7 @@ test.describe('Tour 01 — navigation', () => {
       await expect(page).toHaveURL(dest.url)
       const target = dest.root
         ? page.getByTestId(dest.root)
-        : page.getByRole('heading', { name: dest.heading! })
+        : page.getByRole('heading', { name: dest.heading!, exact: true })
       await expect(target).toBeVisible({ timeout: 15_000 })
     }
 

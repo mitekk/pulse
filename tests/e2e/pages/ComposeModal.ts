@@ -13,6 +13,10 @@ export class ComposeModal {
   readonly charRing: Locator
   readonly closeButton: Locator
   readonly replyPolicyTrigger: Locator
+  readonly fileInput: Locator
+  readonly attachButton: Locator
+  readonly attachments: Locator
+  readonly removeButtons: Locator
 
   constructor(page: Page) {
     this.page = page
@@ -22,6 +26,10 @@ export class ComposeModal {
     this.charRing = this.modal.getByTestId('char-ring')
     this.closeButton = this.modal.getByTestId('close-compose-modal')
     this.replyPolicyTrigger = this.modal.getByTestId('reply-policy-trigger')
+    this.fileInput = this.modal.locator('input[type="file"]')
+    this.attachButton = this.modal.getByTestId('attach-media-button')
+    this.attachments = this.modal.getByTestId('media-attachments')
+    this.removeButtons = this.modal.getByTestId('remove-attachment')
   }
 
   /** Opens the modal by navigating to /compose (avoids ambiguity over which compose button is visible). */
@@ -41,5 +49,13 @@ export class ComposeModal {
   async selectReplyPolicy(policy: 'everyone' | 'following' | 'mentioned') {
     await this.replyPolicyTrigger.click()
     await this.modal.getByTestId(`reply-policy-${policy}`).click()
+  }
+
+  /**
+   * Attaches one or more local files to the hidden file input (the composer's
+   * input is `multiple`). Pass the same path twice to attach two copies.
+   */
+  async attachImages(paths: string[]) {
+    await this.fileInput.setInputFiles(paths)
   }
 }
