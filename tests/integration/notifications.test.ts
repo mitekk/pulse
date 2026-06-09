@@ -8,6 +8,7 @@
 import supertest from 'supertest';
 import { getApp, closeApp, truncateAll } from './helpers/app';
 import { createUser, bearerHeader } from './helpers/auth';
+import { waitFor } from './helpers/wait';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 
 let app: NestFastifyApplication;
@@ -39,11 +40,23 @@ async function createPost(
 }
 
 /**
- * Brief delay to let fire-and-forget notification writes complete.
- * Notifications are created asynchronously (void + catch in service layer).
+ * Notification writes are fire-and-forget (void + catch in the service layer), so
+ * a fixed sleep is racy. Poll the recipient's notifications endpoint until
+ * `predicate(items)` holds, then return the response. Bounded by waitFor's timeout.
  */
-function waitForNotifications(ms = 300): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function notificationsWhere(
+  recipient: { accessToken: string },
+  predicate: (items: Array<{ id: string; type: string }>) => boolean,
+  label: string,
+): Promise<{ body: { items: Array<{ id: string; type: string }> } }> {
+  return waitFor(async () => {
+    const res = await http
+      .get('/api/v1/notifications')
+      .set('Authorization', `Bearer ${recipient.accessToken}`)
+      .expect(200);
+    const items = res.body.items as Array<{ id: string; type: string }>;
+    return predicate(items) ? res : null;
+  }, { label });
 }
 
 // ─── Notification creation ────────────────────────────────────────────────────
@@ -61,13 +74,12 @@ describe('Notification creation via events', () => {
       .set('Authorization', bearerHeader(bob))
       .expect(201);
 
-    await waitForNotifications();
-
-    // Alice should have a notification
-    const res = await http
-      .get('/api/v1/notifications')
-      .set('Authorization', bearerHeader(alice))
-      .expect(200);
+    // Alice should have a like notification (poll the fire-and-forget write)
+    const res = await notificationsWhere(
+      alice,
+      (items) => items.some((n) => n.type === 'like'),
+      'like notification',
+    );
 
     expect(Array.isArray(res.body.items)).toBe(true);
     const likeNotif = res.body.items.find(
@@ -86,12 +98,11 @@ describe('Notification creation via events', () => {
       .set('Authorization', bearerHeader(bob))
       .expect(201);
 
-    await waitForNotifications();
-
-    const res = await http
-      .get('/api/v1/notifications')
-      .set('Authorization', bearerHeader(alice))
-      .expect(200);
+    const res = await notificationsWhere(
+      alice,
+      (items) => items.some((n) => n.type === 'follow'),
+      'follow notification',
+    );
 
     const followNotif = res.body.items.find(
       (n: { type: string }) => n.type === 'follow',
@@ -111,12 +122,11 @@ describe('Notification creation via events', () => {
       .send({ text: 'Bob replies', replyToId: post.id })
       .expect(201);
 
-    await waitForNotifications();
-
-    const res = await http
-      .get('/api/v1/notifications')
-      .set('Authorization', bearerHeader(alice))
-      .expect(200);
+    const res = await notificationsWhere(
+      alice,
+      (items) => items.some((n) => n.type === 'reply'),
+      'reply notification',
+    );
 
     const replyNotif = res.body.items.find(
       (n: { type: string }) => n.type === 'reply',
@@ -172,12 +182,14 @@ describe('GET /api/v1/notifications/unread-count', () => {
       .set('Authorization', bearerHeader(bob))
       .expect(201);
 
-    await waitForNotifications();
-
-    const res = await http
-      .get('/api/v1/notifications/unread-count')
-      .set('Authorization', bearerHeader(alice))
-      .expect(200);
+    // Poll the unread-count until the async notification is reflected (>= 1)
+    const res = await waitFor(async () => {
+      const r = await http
+        .get('/api/v1/notifications/unread-count')
+        .set('Authorization', bearerHeader(alice))
+        .expect(200);
+      return (r.body.count as number) >= 1 ? r : null;
+    }, { label: 'unread-count >= 1' });
 
     expect(res.body.count).toBeGreaterThanOrEqual(1);
   });
@@ -201,7 +213,8 @@ describe('POST /api/v1/notifications/read', () => {
       .set('Authorization', bearerHeader(bob))
       .expect(201);
 
-    await waitForNotifications();
+    // Wait for the async notification write, then mark all read
+    await notificationsWhere(alice, (items) => items.length > 0, 'a notification');
 
     // Mark all read
     const markRes = await http
@@ -232,12 +245,11 @@ describe('POST /api/v1/notifications/read', () => {
       .set('Authorization', bearerHeader(bob))
       .expect(201);
 
-    await waitForNotifications();
-
-    const notifRes = await http
-      .get('/api/v1/notifications')
-      .set('Authorization', bearerHeader(alice))
-      .expect(200);
+    const notifRes = await notificationsWhere(
+      alice,
+      (items) => items.length > 0,
+      'a notification',
+    );
 
     const notifId = notifRes.body.items[0]?.id;
     expect(notifId).toBeTruthy();

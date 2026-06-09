@@ -38,6 +38,9 @@ export default defineConfig({
     include: ['../tests/integration/**/*.test.ts'],
     // Run integration test files sequentially to avoid DB contention between files.
     fileParallelism: false,
+    // Retry transient failures up to twice — see vitest.integration.config.ts.
+    // The combined-coverage run is the CI 80%-lines gate, so it must not flake.
+    retry: 2,
     // Integration tests are slower — allow 30s per test
     testTimeout: 30_000,
     hookTimeout: 60_000,

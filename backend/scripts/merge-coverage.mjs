@@ -11,7 +11,11 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import pkg from '../node_modules/istanbul-lib-coverage/index.js';
+// Bare specifier so Node resolves it via the node_modules walk — istanbul-lib-coverage
+// is a transitive dep that npm workspaces hoists to the ROOT node_modules, not
+// backend/node_modules. A hardcoded '../node_modules/...' path breaks under hoisting
+// (and identically in CI, which installs from the same lockfile).
+import pkg from 'istanbul-lib-coverage';
 const { createCoverageMap } = pkg;
 
 const LINES_THRESHOLD = 80;

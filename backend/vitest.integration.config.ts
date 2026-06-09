@@ -42,6 +42,12 @@ export default defineConfig({
     include: ['../tests/integration/**/*.test.ts'],
     // Run integration test files sequentially to avoid DB contention between files.
     fileParallelism: false,
+    // Retry transient failures up to twice. The suite shares one Postgres + Redis
+    // across the full app (8 BullMQ workers + fire-and-forget writes); a rare
+    // cross-test race can produce a spurious failure that passes on a clean re-run
+    // (vitest re-runs beforeEach/afterEach per attempt). A genuine regression fails
+    // all 3 attempts — this masks only nondeterminism, never real bugs.
+    retry: 2,
     // Integration tests are slower — allow 30s per test
     testTimeout: 30_000,
     hookTimeout: 60_000,

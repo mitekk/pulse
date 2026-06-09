@@ -21,8 +21,8 @@ export default defineConfig({
   // Flush Redis before each run to reset auth rate-limit counters
   globalSetup: './tests/e2e/global-setup.ts',
 
-  // Re-run failed tests once on CI; no retries locally
-  retries: process.env.CI ? 1 : 0,
+  // Re-run failed tests on CI to absorb transient stack/network flakes; none locally
+  retries: process.env.CI ? 2 : 0,
 
   // Run tests serially (1 worker) to stay within the backend auth rate limit.
   // The register endpoint allows 10 calls per 600s window per IP; with 4

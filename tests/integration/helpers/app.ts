@@ -21,6 +21,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import fastifyCookie from '@fastify/cookie';
 import { DataSource } from 'typeorm';
+import { waitForQueuesIdle } from './wait';
 
 // ── Entity imports (explicit, no glob) ───────────────────────────────────────
 import { User } from '../../../backend/src/modules/users/user.entity';
@@ -234,17 +235,18 @@ export async function closeApp(): Promise<void> {
  * Also flushes Redis to reset rate limits and caches.
  * Order matters: FK constraints require child-before-parent deletion.
  *
- * NOTE: A 100ms settle delay is added before truncation to let any
- * fire-and-forget async operations (notification writes, etc.) complete
- * before clearing the DB. Without this, async writes racing with truncate
- * can cause FK violations or leave stale data for the next test.
+ * NOTE: Before truncating we deterministically wait for all BullMQ workers to go
+ * idle (waitForQueuesIdle). Background jobs racing with truncate would otherwise
+ * cause FK violations or leave stale data for the next test. This replaces an
+ * arbitrary fixed sleep — it is bounded by a timeout so it can never hang.
  */
 export async function truncateAll(): Promise<void> {
-  // Settle window for fire-and-forget async operations (notifications, fanout, etc.).
-  // 300ms gives async writes time to complete before DB truncation to avoid FK violations.
-  await new Promise<void>((resolve) => setTimeout(resolve, 300));
-
   const app = await getApp();
+
+  // Deterministic settle: block until no BullMQ worker has an active/waiting job,
+  // so nothing writes to Postgres/Redis mid-truncate. Bounded — never hangs.
+  await waitForQueuesIdle(app);
+
   const ds = await getDataSource();
 
   // Flush Redis to reset rate-limit counters, BullMQ keys, and cached data between
