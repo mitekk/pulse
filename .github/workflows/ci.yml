@@ -185,6 +185,19 @@ jobs:
           NODE_VERSION=$(cat .nvmrc) docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
         timeout-minutes: 15
 
+      # If the stack failed to come up healthy, surface the container states and
+      # backend logs — `compose up --wait` only reports "unhealthy" without them.
+      - name: Dump stack logs on failure
+        if: failure()
+        run: |
+          echo "::group::compose ps"
+          NODE_VERSION=$(cat .nvmrc) FRONTEND_PORT=18080 WEB_ORIGIN=http://localhost:18080 \
+            docker compose -f docker-compose.yml -f docker-compose.e2e.yml ps -a || true
+          echo "::endgroup::"
+          echo "::group::backend logs"
+          docker logs tweeter-backend-1 --tail 400 2>&1 || true
+          echo "::endgroup::"
+
       # Run DB migrations inside the running backend container.
       # Workspace layout: app at /app/backend; typeorm bin hoisted to /app/node_modules/.bin.
       - name: Run database migrations

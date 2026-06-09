@@ -1,3 +1,8 @@
+# Pin the Compose project name so container/volume names are deterministic across
+# environments (locally the dir is "tweeter", on CI it's the repo "pulse"). CI and
+# the Makefile reference "tweeter-backend-1" by name, so this keeps them valid.
+name: tweeter
+
 services:
   db:
     image: postgres:16-alpine
