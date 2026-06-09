@@ -7,6 +7,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Retry on CI to absorb rare scheduling/timing flakes on the 2-core runner.
+    // None locally, so genuine flakes stay visible to developers.
+    retry: process.env.CI ? 2 : 0,
     setupFiles: ['./src/test/setup.ts'],
     coverage: {
       provider: 'v8',

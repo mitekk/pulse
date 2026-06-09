@@ -102,6 +102,18 @@ export default function PhotoPage() {
   const [displayIdx, setDisplayIdx] = useState(safeIdx)
   const handle = post?.author.handle
 
+  // Mirror the committed index into a ref so event handlers (keyboard / swipe) always
+  // read the CURRENT index synchronously, rather than a value captured in a closure
+  // that can lag a render during the async media-load + route-sync transition. Without
+  // this, a keypress fired in that window navigates from a stale index (or no-ops).
+  const displayIdxRef = useRef(displayIdx)
+
+  // Keep the ref in sync with the committed index. navigateTo also updates it eagerly,
+  // so user-driven navigation never reads a stale value.
+  useEffect(() => {
+    displayIdxRef.current = displayIdx
+  }, [displayIdx])
+
   // Sync when route param changes
   useEffect(() => {
     setDisplayIdx(safeIdx)
@@ -110,21 +122,23 @@ export default function PhotoPage() {
   const navigateTo = useCallback(
     (newIdx: number) => {
       const bounded = Math.max(0, Math.min(newIdx, media.length - 1))
-      if (bounded === displayIdx) return
+      if (bounded === displayIdxRef.current) return
+      displayIdxRef.current = bounded
       setDisplayIdx(bounded)
       // Update the URL (1-based)
       if (handle) {
         navigate(`/@${handle}/status/${postId}/photo/${bounded + 1}`, { replace: true })
       }
     },
-    [displayIdx, media.length, handle, postId, navigate],
+    [media.length, handle, postId, navigate],
   )
 
-  const goNext = useCallback(() => navigateTo(displayIdx + 1), [displayIdx, navigateTo])
-  const goPrev = useCallback(() => navigateTo(displayIdx - 1), [displayIdx, navigateTo])
+  const goNext = useCallback(() => navigateTo(displayIdxRef.current + 1), [navigateTo])
+  const goPrev = useCallback(() => navigateTo(displayIdxRef.current - 1), [navigateTo])
   const goBack = useCallback(() => navigate(-1), [navigate])
 
   // ── Keyboard navigation ──────────────────────────────────
+  // Handlers read the index from the ref, so they never go stale between renders.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') goNext()
