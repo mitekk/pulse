@@ -1,28 +1,54 @@
-# PULSE — Microblogging Platform
+<p align="center">
+  <img src="docs/assets/logo.png" alt="PULSE logo" width="96" />
+</p>
 
-A full-featured Twitter-style microblogging platform: posts, replies, reposts & quotes, threads,
-follows (incl. private accounts), home timeline with Redis fan-out, likes/bookmarks, media,
-direct messages, notifications, search/hashtags/trends — all real-time over WebSockets.
+<h1 align="center">PULSE</h1>
+
+<p align="center">
+  A real-time, Twitter-style microblogging platform — posts, threads, follows, DMs,
+  search &amp; trends, all live over WebSockets.
+</p>
+
+<p align="center">
+  <a href="https://github.com/mitekk/pulse/actions/workflows/ci.yml"><img src="https://github.com/mitekk/pulse/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+  <img src="https://img.shields.io/badge/node-24-3C873A?logo=node.js&logoColor=white" alt="Node 24" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/NestJS-E0234E?logo=nestjs&logoColor=white" alt="NestJS" />
+  <img src="https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white" alt="Redis" />
+</p>
+
+---
+
+**PULSE** is a full-featured microblogging platform built as a production-shaped reference
+implementation: a NestJS modular monolith, a React/Vite single-page app, and real-time delivery
+over WebSockets — the whole stack lifts with **one command** in Docker. It implements the social
+mechanics you'd expect from a feed app (posts, replies, threads, reposts/quotes, follows, likes,
+bookmarks, DMs, notifications, search, hashtags, trends) on top of a Redis fan-out timeline.
+
+## ✨ What you can do
+
+- **Post & reply** — share posts up to 280 characters; reply to anyone and read the whole conversation as a threaded view.
+- **Repost & quote** — boost a post to your followers, or quote it with your own commentary.
+- **Follow people — or lock your account** — build a follow graph, or set your account **private** so new followers need approval. Block and mute to curate what you see.
+- **Like & bookmark** — react to posts and privately save them for later.
+- **A timeline that updates live** — your home feed assembles from the people you follow, and a "N new posts" pill appears in real time as they post.
+- **Direct messages** — 1:1 conversations with typing indicators and read receipts, delivered instantly.
+- **Notifications** — likes, follows, replies, mentions, and reposts, aggregated, with a live unread badge.
+- **Search & explore** — find posts and people across **Top / Latest / People / Media**, browse hashtag timelines, and see what's trending.
+- **Profiles & media** — a customizable profile (avatar, banner, bio) and image/video attachments processed through a media pipeline.
+
+## 🧱 Tech stack
 
 - **Backend:** NestJS (Fastify adapter) · PostgreSQL 16 · Redis 7 · BullMQ · Socket.IO (Redis adapter) · TypeORM · MinIO/S3
 - **Frontend:** React + Vite + TypeScript · TanStack Query · Zustand · React Router · Socket.IO client · Tailwind (token-based theming, light/dark)
 
-> Design docs: [docs/architecture.md](docs/architecture.md) · API: [docs/api-contract.md](docs/api-contract.md) · decisions: [docs/adr/](docs/adr/) · requirements: [docs/prd/PRD-current.md](docs/prd/PRD-current.md)
-
----
-
-## Prerequisites
-
-- Docker + Docker Compose
-- Node.js 24 — pinned to an exact version in [.nvmrc](.nvmrc); run `nvm use` (only needed for running
-  tests / Turbo / dev outside Docker). The same version is used by the containers and CI.
-
-This is an **npm-workspaces + Turborepo** monorepo (`frontend`, `backend`, and the root e2e package)
-with a **single root `package-lock.json`**. Install once at the root; run `make help` for all tasks.
-To change a dependency, edit that package's `package.json` and run `npm install` at the root to refresh
-the single lockfile.
-
-## Quick start (full stack)
+## 🚀 Quick start (full stack)
 
 ```bash
 cp .env.example .env        # dev placeholders work out of the box
@@ -39,7 +65,7 @@ docker compose up --build   # builds + lifts the whole stack
 
 Open **http://localhost:8080**, register an account, and post.
 
-## Local development (hot reload)
+## 💻 Local development (hot reload)
 
 `docker compose up` automatically loads [docker-compose.override.yml](docker-compose.override.yml),
 which runs both apps with hot reload — **no rebuild on code change**:
@@ -60,7 +86,7 @@ npm run dev -w backend       # http://localhost:3000
 npm run dev -w frontend      # http://localhost:5173 (proxies to localhost:3000)
 ```
 
-## Environment variables
+## ⚙️ Environment variables
 
 Copy [.env.example](.env.example) to `.env`. Key variables:
 
@@ -79,7 +105,7 @@ Copy [.env.example](.env.example) to `.env`. Key variables:
 Email verification logs the token to the backend console in dev (no SMTP required).
 **Never commit a real `.env`** — only `.env.example` is tracked.
 
-## Running tests
+## 🧪 Running tests
 
 ```bash
 # All packages via Turborepo (run from the repo root)
@@ -98,7 +124,10 @@ npm run test -w backend            # npm run test:coverage -w backend for covera
 npm run test -w frontend
 ```
 
-## Migrations
+Coverage is gated at **80% lines** in CI. The pipeline runs the layers in order —
+`lint → unit → integration → e2e → build` (see [.github/workflows/ci.yml](.github/workflows/ci.yml)).
+
+## 🗄️ Migrations
 
 TypeORM migrations run against Postgres (never `synchronize`):
 
@@ -110,7 +139,19 @@ npm run migration:revert   # roll back the last migration
 
 In Docker, migrations run on backend startup in dev.
 
-## Project structure
+## 🏗️ Technical highlights
+
+The load-bearing engineering decisions are recorded as ADRs (see the [decision log](docs/adr/README.md)):
+
+- **Time-ordered IDs + cursor pagination** — Snowflake-style 64-bit IDs make posts/messages/notifications chronologically sortable without a separate index; every list endpoint uses keyset/cursor pagination, never `OFFSET`. → [ADR-0002](docs/adr/0002-database-and-id-strategy.md)
+- **Hybrid push/pull timeline fan-out** — home timelines are precomputed per user as capped Redis sorted sets (push), with a pull path for high-follower "celebrity" accounts above `CELEBRITY_FOLLOWER_THRESHOLD`. Fan-out runs async on BullMQ. → [ADR-0004](docs/adr/0004-caching-and-timeline-fanout.md)
+- **Real-time over WebSockets** — a Socket.IO gateway with a Redis pub/sub adapter fans events (timeline pills, notifications, DMs, typing, read receipts, live counters) across instances into per-user rooms. → [ADR-0004](docs/adr/0004-caching-and-timeline-fanout.md)
+- **Modular monolith with clean seams** — one deployable, organized by domain module; cross-module dependencies go through typed **ports/adapters** (`@Global` + `useExisting`) so modules stay decoupled and splittable later. → [ADR-0006](docs/adr/0006-nestjs-port-wiring-pattern.md)
+- **Secure sessions** — a short-lived access JWT (in memory) plus a **rotating** refresh token in an httpOnly/Secure/SameSite cookie, with a Redis denylist enforced in the auth guard so logout revokes immediately. → [ADR-0003](docs/adr/0003-auth-strategy.md), [ADR-0009](docs/adr/0009-session-revocation-denylist.md)
+- **Media pipeline** — presigned direct-to-storage uploads (MinIO/S3), async processing into variants, then attachment to posts.
+- **Search without extra infrastructure** — PostgreSQL full-text search + `pg_trgm` fuzzy matching behind a `SearchPort`, swappable for a dedicated engine later. → [ADR-0005](docs/adr/0005-search-approach.md)
+
+## 📂 Project structure
 
 ```
 backend/    NestJS modular monolith (modules: auth, users, posts, timeline, engagement,
@@ -121,12 +162,23 @@ tests/      integration + e2e (Playwright)
 .github/    CI workflows
 ```
 
-## Features
+## 📚 Documentation
 
-Auth (JWT access + rotating httpOnly-cookie refresh, sessions) · profiles & follow graph
-(public + private/requests, blocks, mutes) · posts/replies/reposts/quotes/threads with entity
-extraction · likes & bookmarks with denormalized counters · home timeline (hybrid Redis fan-out)
-+ user/replies/media/likes tabs + hashtag timelines · media pipeline (presigned upload → process →
-variants) · real-time (timeline pills, notifications, DMs, typing, read receipts, live counters) ·
-notifications (aggregated, unread badge) · search (Top/Latest/People/Media) · trends · reports ·
-per-route rate limiting.
+| Doc | What's inside |
+|---|---|
+| [Architecture](docs/architecture.md) | Topology, data stores, timeline fan-out, module layout |
+| [API contract](docs/api-contract.md) | Every endpoint — method, path, request/response body, auth |
+| [ADR index](docs/adr/README.md) | Decision records (stack, IDs, auth, caching, search, …) |
+| [PRD](docs/prd/PRD-current.md) | Product requirements (v1 feature set) |
+| [Known limitations](docs/known-limitations.md) | Honest status of intentionally-incomplete / out-of-scope areas |
+
+## ✅ Status
+
+Scaffold **complete** — `docker compose up --build` lifts a healthy stack, CI runs the full
+`lint → unit → integration → e2e → build` pipeline, and the runtime smoke test found no
+critical/high issues. See [known limitations](docs/known-limitations.md) for what's intentionally
+out of scope for v1.
+
+## 📄 License
+
+[MIT](./LICENSE) © 2026 Mitya
