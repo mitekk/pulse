@@ -5,10 +5,12 @@
 # single root npm-workspaces lockfile drives the install. Only the `frontend`
 # workspace subtree is installed (lean image — no backend deps, no root tooling).
 #
-# Multi-stage:
+# Multi-stage — `runner` is LAST so a bare `docker build` (and PaaS platforms
+# that default to the final stage) produce the production image without needing
+# an explicit --target:
 #   builder  → node:24-alpine: npm ci (frontend) + vite build → /app/frontend/dist
-#   runner   → nginx:alpine: serves the static bundle
 #   dev      → node:24-alpine: Vite HMR (used by docker-compose.override.yml)
+#   runner   → nginx:alpine: serves the static bundle   ← default / production target
 #
 # Build-time env (VITE_* are baked into the bundle):
 #   VITE_API_BASE_URL  — absolute URL or relative path for API calls
@@ -47,7 +49,25 @@ ENV VITE_WS_URL=${VITE_WS_URL}
 # Build the production bundle (→ /app/frontend/dist)
 RUN npm run build --workspace=frontend
 
-# ── Stage 2: runner ───────────────────────────────────────────
+# ── Stage 2: dev ──────────────────────────────────────────────
+# Used by docker-compose.override.yml for in-container Vite HMR.
+# The override bind-mounts ./frontend over /app/frontend with an anonymous
+# volume for /app/frontend/node_modules; hoisted deps at /app/node_modules
+# (baked into this stage) are not shadowed and remain resolvable.
+FROM node:${NODE_VERSION}-alpine AS dev
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY frontend/package.json ./frontend/
+COPY backend/package.json ./backend/
+RUN npm ci --workspace=frontend --include-workspace-root=false
+COPY frontend ./frontend
+
+WORKDIR /app/frontend
+EXPOSE 5173
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+
+# ── Stage 3: runner (default / production) ────────────────────
 FROM nginx:1.27-alpine AS runner
 
 # Non-root user for nginx worker processes
@@ -74,21 +94,3 @@ HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
   CMD wget -qO- http://127.0.0.1:8080/healthz || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
-
-# ── Stage 3: dev ──────────────────────────────────────────────
-# Used by docker-compose.override.yml for in-container Vite HMR.
-# The override bind-mounts ./frontend over /app/frontend with an anonymous
-# volume for /app/frontend/node_modules; hoisted deps at /app/node_modules
-# (baked into this stage) are not shadowed and remain resolvable.
-FROM node:${NODE_VERSION}-alpine AS dev
-
-WORKDIR /app
-COPY package.json package-lock.json ./
-COPY frontend/package.json ./frontend/
-COPY backend/package.json ./backend/
-RUN npm ci --workspace=frontend --include-workspace-root=false
-COPY frontend ./frontend
-
-WORKDIR /app/frontend
-EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
