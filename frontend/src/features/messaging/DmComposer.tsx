@@ -304,7 +304,7 @@ export function DmComposer({
             width: '36px',
             height: '36px',
             borderRadius: 'var(--radius-full)',
-            background: canSubmit ? 'var(--color-accent)' : 'var(--color-surface-raised)',
+            background: canSubmit ? 'var(--color-accent-strong)' : 'var(--color-surface-raised)',
             color: canSubmit ? 'var(--color-accent-contrast)' : 'var(--color-text-dimmed)',
             display: 'flex',
             alignItems: 'center',

@@ -169,7 +169,7 @@ export function Tabs({
                   <span
                     style={{
                       fontSize: 'var(--text-xs)',
-                      background: isActive ? 'var(--color-accent)' : 'var(--color-surface-overlay)',
+                      background: isActive ? 'var(--color-accent-strong)' : 'var(--color-surface-overlay)',
                       color: isActive ? 'var(--color-accent-contrast)' : 'var(--color-text-muted)',
                       borderRadius: 'var(--radius-full)',
                       padding: '1px 5px',

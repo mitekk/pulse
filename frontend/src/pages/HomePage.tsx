@@ -44,7 +44,7 @@ function NewPostsPill({
         gap: 'var(--space-2)',
         margin: '0 auto var(--space-3)',
         padding: 'var(--space-2) var(--space-4)',
-        background: 'var(--color-accent)',
+        background: 'var(--color-accent-strong)',
         color: 'var(--color-accent-contrast)',
         borderRadius: 'var(--radius-full)',
         fontFamily: 'var(--font-body)',
@@ -172,7 +172,7 @@ function HomeHeader({ onRefresh }: { onRefresh: () => void }) {
           style={{
             padding: '0.375rem 0.875rem',
             borderRadius: 'var(--radius-full)',
-            background: 'var(--color-accent)',
+            background: 'var(--color-accent-strong)',
             color: 'var(--color-accent-contrast)',
             fontFamily: 'var(--font-body)',
             fontWeight: 'var(--font-weight-semibold)',

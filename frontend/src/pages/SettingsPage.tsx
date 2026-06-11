@@ -429,7 +429,7 @@ function AccountSettings() {
           style={{
             padding: '0.625rem 1.5rem',
             borderRadius: 'var(--radius-full)',
-            background: 'var(--color-accent)',
+            background: 'var(--color-accent-strong)',
             color: 'var(--color-accent-contrast)',
             fontFamily: 'var(--font-body)',
             fontWeight: 'var(--font-weight-semibold)',
@@ -529,7 +529,7 @@ function SessionItem({ session, onRevoke }: { session: SessionDto; onRevoke: (id
               data-testid="session-current-badge"
               style={{
                 fontSize: 'var(--text-xs)',
-                background: 'var(--color-accent)',
+                background: 'var(--color-accent-strong)',
                 color: 'var(--color-accent-contrast)',
                 padding: '1px 6px',
                 borderRadius: 'var(--radius-full)',

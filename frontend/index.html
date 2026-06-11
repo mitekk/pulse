@@ -2,9 +2,44 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+
+    <!-- Primary meta — overridden per-route at runtime by the <Seo> component -->
+    <title>PULSE — Microblogging, in real time</title>
+    <meta
+      name="description"
+      content="PULSE is a real-time microblogging platform. Follow people, share posts, and join the conversation as it happens."
+    />
+    <meta name="theme-color" content="#0e0e0f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+
+    <!-- Icons & PWA -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Default Open Graph / Twitter (per-route values injected by <Seo>) -->
+    <meta property="og:site_name" content="PULSE" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="PULSE — Microblogging, in real time" />
+    <meta
+      property="og:description"
+      content="PULSE is a real-time microblogging platform. Follow people, share posts, and join the conversation as it happens."
+    />
+    <meta property="og:image" content="/og-default.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PULSE — Microblogging, in real time" />
+    <meta name="twitter:image" content="/og-default.png" />
+
+    <!-- Fonts: preconnect to warm the connection, then load directly from HTML
+         (avoids the render-blocking @import-in-CSS request chain). display=swap
+         renders fallback text immediately. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Instrument+Sans:ital,wdth,wght@0,75..100,400..700;1,75..100,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
   </head>
   <body>
     <div id="root"></div>

@@ -23,7 +23,11 @@
     "test:e2e:debug": "npx playwright test --debug"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.49.0",
     "turbo": "^2.9.16"
+  },
+  "overrides": {
+    "tmp": "^0.2.4"
   }
 }

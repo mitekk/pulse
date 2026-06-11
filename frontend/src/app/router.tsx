@@ -6,8 +6,7 @@
 
 import React, { Suspense } from 'react'
 import { createBrowserRouter, Outlet } from 'react-router-dom'
-import { AppShell } from './AppShell'
-import { AuthGuard } from './AuthGuard'
+import { AdaptiveShell } from './AdaptiveShell'
 import { GuestGuard } from './GuestGuard'
 import { RouteErrorBoundary } from './RouteErrorBoundary'
 import { FullPageSpinner } from '@/components/FullPageSpinner'
@@ -67,13 +66,12 @@ export const router = createBrowserRouter([
     errorElement: <RouteErrorBoundary />,
   },
 
-  // ── App shell (auth-protected) ─────────────────────────
+  // ── App shell ──────────────────────────────────────────
+  // AdaptiveShell renders AppShell for authed users, PublicShell for
+  // guests on routes marked `handle.public`, and redirects guests to
+  // /login on every other (private) route.
   {
-    element: (
-      <AuthGuard>
-        <AppShell />
-      </AuthGuard>
-    ),
+    element: <AdaptiveShell />,
     errorElement: <RouteErrorBoundary />,
     children: [
       {
@@ -156,9 +154,10 @@ export const router = createBrowserRouter([
           </LazyPage>
         ),
       },
-      // ── Profile routes ──────────────────────────────────
+      // ── Profile routes (public) ─────────────────────────
       {
         path: '/:handle',
+        handle: { public: true },
         element: (
           <LazyPage>
             <ProfilePage tab="posts" />
@@ -167,6 +166,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/:handle/replies',
+        handle: { public: true },
         element: (
           <LazyPage>
             <ProfilePage tab="replies" />
@@ -175,6 +175,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/:handle/media',
+        handle: { public: true },
         element: (
           <LazyPage>
             <ProfilePage tab="media" />
@@ -183,6 +184,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/:handle/likes',
+        handle: { public: true },
         element: (
           <LazyPage>
             <ProfilePage tab="likes" />
@@ -191,6 +193,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/:handle/followers',
+        handle: { public: true },
         element: (
           <LazyPage>
             <ProfilePage tab="followers" />
@@ -199,24 +202,27 @@ export const router = createBrowserRouter([
       },
       {
         path: '/:handle/following',
+        handle: { public: true },
         element: (
           <LazyPage>
             <ProfilePage tab="following" />
           </LazyPage>
         ),
       },
-      // ── Post / thread ───────────────────────────────────
+      // ── Post / thread (public) ──────────────────────────
       {
         path: '/:handle/status/:postId',
+        handle: { public: true },
         element: (
           <LazyPage>
             <PostPage />
           </LazyPage>
         ),
       },
-      // ── Photo lightbox (modal route) ────────────────────
+      // ── Photo lightbox (modal route, public) ────────────
       {
         path: '/:handle/status/:postId/photo/:idx',
+        handle: { public: true },
         element: (
           <LazyPage>
             <PhotoPage />

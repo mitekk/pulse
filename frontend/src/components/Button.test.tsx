@@ -12,7 +12,8 @@ describe('Button', () => {
   it('applies primary variant by default', () => {
     render(<Button data-testid="btn">Primary</Button>)
     const btn = screen.getByTestId('btn')
-    expect(btn).toHaveStyle({ background: 'var(--color-accent)' })
+    // Primary uses the deeper accent surface so the light label meets WCAG AA.
+    expect(btn).toHaveStyle({ background: 'var(--color-accent-strong)' })
   })
 
   it('applies secondary variant', () => {

@@ -5,6 +5,7 @@
 
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Seo } from '@/components/Seo'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -79,6 +80,11 @@ export default function LoginPage() {
         background: 'var(--color-bg)',
       }}
     >
+      <Seo
+        title="Log in"
+        description="Log in to PULSE — the microblogging platform where people are the first to know."
+        path="/login"
+      />
       {/* Left — brand panel */}
       <div
         aria-hidden="true"
@@ -316,7 +322,7 @@ export default function LoginPage() {
                 background:
                   isSubmitting || rateLimitSeconds !== null
                     ? 'var(--color-border)'
-                    : 'var(--color-accent)',
+                    : 'var(--color-accent-strong)',
                 color:
                   isSubmitting || rateLimitSeconds !== null
                     ? 'var(--color-text-muted)'

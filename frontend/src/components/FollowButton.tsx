@@ -280,7 +280,7 @@ export function FollowButton({
       disabled={isLoading}
       style={{
         ...btnBase,
-        background: 'var(--color-accent)',
+        background: 'var(--color-accent-strong)',
         color: 'var(--color-accent-contrast)',
         border: 'none',
         opacity: isLoading ? 0.7 : 1,

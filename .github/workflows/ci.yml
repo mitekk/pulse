@@ -229,3 +229,73 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build all images
         run: NODE_VERSION=$(cat .nvmrc) docker compose build
+
+  # ── 6. Bundle-size budget (size-limit on the built frontend) ─────────────────
+  bundle-size:
+    name: Bundle Size Budget
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - name: Build frontend
+        run: npm run -w frontend build
+      - name: Check bundle-size budget
+        run: npm run -w frontend size
+
+  # ── 7. Lighthouse benchmarks (SEO / a11y / best-practices / perf gate) ───────
+  lighthouse:
+    name: Lighthouse Benchmarks
+    needs: e2e
+    runs-on: ubuntu-latest
+    env:
+      JWT_ACCESS_SECRET: e2e_ci_access_secret_32chars_long
+      JWT_REFRESH_SECRET: e2e_ci_refresh_secret_32chars_long
+      LH_BASE_URL: http://localhost:18080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+
+      - name: Start Dockerized stack
+        env:
+          FRONTEND_PORT: "18080"
+          WEB_ORIGIN: "http://localhost:18080"
+        run: |
+          NODE_VERSION=$(cat .nvmrc) docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
+        timeout-minutes: 15
+
+      - name: Dump stack logs on failure
+        if: failure()
+        run: |
+          NODE_VERSION=$(cat .nvmrc) FRONTEND_PORT=18080 WEB_ORIGIN=http://localhost:18080 \
+            docker compose -f docker-compose.yml -f docker-compose.e2e.yml ps -a || true
+          docker logs tweeter-backend-1 --tail 400 2>&1 || true
+
+      - name: Run database migrations
+        run: |
+          docker exec -w /app/backend tweeter-backend-1 \
+            npx typeorm migration:run -d dist/infra/database/data-source.js
+
+      - name: Seed public content for Lighthouse
+        run: node scripts/seed-lighthouse.mjs
+
+      - name: Run Lighthouse CI
+        run: npx lhci autorun
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-results
+          path: .lighthouseci/
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v

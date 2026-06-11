@@ -282,6 +282,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {children}
         {createPortal(
           <div
+            role="region"
             aria-live="polite"
             aria-atomic="false"
             aria-label="Notifications"

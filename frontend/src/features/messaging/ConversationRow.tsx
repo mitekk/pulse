@@ -160,7 +160,7 @@ export function ConversationRow({
                 height: '18px',
                 padding: '0 5px',
                 borderRadius: 'var(--radius-full)',
-                background: 'var(--color-accent)',
+                background: 'var(--color-accent-strong)',
                 color: 'var(--color-accent-contrast)',
                 fontSize: 'var(--text-xs)',
                 fontWeight: 'var(--font-weight-bold)',

@@ -924,7 +924,7 @@ export function PostComposer({
               style={{
                 padding: '0.4rem 1.1rem',
                 borderRadius: 'var(--radius-full)',
-                background: canSubmit && !submitMutation.isPending ? 'var(--color-accent)' : 'var(--color-border)',
+                background: canSubmit && !submitMutation.isPending ? 'var(--color-accent-strong)' : 'var(--color-border)',
                 color: canSubmit && !submitMutation.isPending ? 'var(--color-accent-contrast)' : 'var(--color-text-dimmed)',
                 fontFamily: 'var(--font-body)',
                 fontWeight: 'var(--font-weight-semibold)',
