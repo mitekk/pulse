@@ -13,6 +13,13 @@ services:
     environment:
       NODE_ENV: development
       WEB_ORIGIN: http://localhost:5173
+      # Dev-only fallback secrets so `docker compose up` works without a .env.
+      # Exported vars or a local .env still override these. NOT a prod concern:
+      # CI/e2e/prod load the base compose WITHOUT this override (see Makefile
+      # E2E_FILES/TEST_FILES), where these vars have no default and a real
+      # secret must be supplied.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev_local_access_secret_min_32_chars}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_local_refresh_secret_min_32_chars}
     ports:
       - "3000:3000"
 
@@ -31,5 +38,9 @@ services:
     environment:
       VITE_PROXY_TARGET: http://backend:3000
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+    # Dev serves on 5173 (Vite). NOTE: Compose merges `ports` additively, so the
+    # base service's 8080 publish is also inherited here. If host port 8080 is
+    # taken (e.g. another local stack), set FRONTEND_PORT in a local .env to move
+    # that mapping off 8080 — Compose < 2.24 has no way to drop an inherited port.
     ports:
       - "5173:5173"
