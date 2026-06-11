@@ -1,0 +1,22 @@
+# robots.txt for PULSE
+# Public content (profiles, posts) is crawlable. Private app surfaces
+# and the API are disallowed. A dynamic, host-aware version of this file
+# (with an absolute Sitemap URL) is served by the backend for crawlers;
+# this static copy is the build-time fallback.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /compose
+Disallow: /compose/
+Disallow: /messages
+Disallow: /messages/
+Disallow: /notifications
+Disallow: /notifications/
+Disallow: /bookmarks
+Disallow: /settings
+Disallow: /settings/
+Disallow: /search
+Disallow: /verify-email
+
+Sitemap: /sitemap.xml

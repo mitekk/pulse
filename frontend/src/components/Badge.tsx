@@ -33,7 +33,7 @@ const VARIANT_COLORS: Record<BadgeVariant, { bg: string; color: string }> = {
     color: 'var(--color-warning)',
   },
   accent: {
-    bg: 'var(--color-accent)',
+    bg: 'var(--color-accent-strong)',
     color: 'var(--color-accent-contrast)',
   },
 }

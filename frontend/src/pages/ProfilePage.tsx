@@ -18,6 +18,8 @@ import { PostCardSkeleton, Skeleton } from '@/components/Skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { ScrollSentinel } from '@/components/ScrollSentinel'
 import { UserRow } from '@/components/UserCard'
+import { Seo } from '@/components/Seo'
+import { truncate } from '@/lib/seo'
 import type { PostDto, UserCardDto } from '@/types/api'
 
 interface ProfilePageProps {
@@ -318,8 +320,21 @@ export default function ProfilePage({ tab }: ProfilePageProps) {
   const isFollowerOrFollowingTab = tab === 'followers' || tab === 'following'
 
   // ── Render ─────────────────────────────────────────────────
+  const seoDescription = profile.bio
+    ? truncate(profile.bio)
+    : `The latest posts from ${profile.displayName} (@${profile.handle}) on PULSE.`
+
   return (
     <div data-testid={`profile-page-${handle}`}>
+      <Seo
+        title={`${profile.displayName} (@${profile.handle})`}
+        description={seoDescription}
+        path={`/@${profile.handle}`}
+        image={profile.avatarUrl}
+        type="profile"
+        card="summary"
+        noindex={profile.isPrivate}
+      />
       <ProfileHeader profile={profile} />
 
       {/* Show tabs only for content tabs (not followers/following) */}

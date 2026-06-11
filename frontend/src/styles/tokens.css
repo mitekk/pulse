@@ -4,7 +4,9 @@
    Display: DM Serif Display | Body: Instrument Sans | Mono: JetBrains Mono
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Instrument+Sans:ital,wdth,wght@0,75..100,400..700;1,75..100,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* Fonts are loaded via <link rel="stylesheet"> in index.html (with preconnect),
+   not an @import here — an @import inside imported CSS creates a render-blocking
+   request chain (CSS must download before the font request even starts). */
 
 /* ── Light theme (fallback) ─────────────────────────────── */
 :root {
@@ -25,6 +27,11 @@
   --color-accent:         #e8402a;
   --color-accent-hover:   #f05040;
   --color-accent-contrast:#f0ede8;
+  /* Deeper accent for FILLED buttons/CTAs so the light label clears WCAG AA
+     (4.79:1 with --color-accent-contrast). --color-accent stays bright for
+     text/links/wordmark. Hover goes deeper (light label leaves no room up). */
+  --color-accent-strong:  #c5301a;
+  --color-accent-strong-hover:#ad2712;
 
   --color-success:        #2aad6e;
   --color-danger:         #e8402a;
@@ -131,6 +138,8 @@
   --color-accent:         #d43520;
   --color-accent-hover:   #e84030;
   --color-accent-contrast:#ffffff;
+  --color-accent-strong:  #c5301a;
+  --color-accent-strong-hover:#ad2712;
 
   --color-success:        #1a8a58;
   --color-danger:         #d43520;
@@ -158,6 +167,8 @@
     --color-accent:         #d43520;
     --color-accent-hover:   #e84030;
     --color-accent-contrast:#ffffff;
+    --color-accent-strong:  #c5301a;
+    --color-accent-strong-hover:#ad2712;
 
     --color-success:        #1a8a58;
     --color-danger:         #d43520;

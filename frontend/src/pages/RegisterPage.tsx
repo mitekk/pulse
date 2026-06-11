@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Seo } from '@/components/Seo'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -128,6 +129,11 @@ export default function RegisterPage() {
         background: 'var(--color-bg)',
       }}
     >
+      <Seo
+        title="Sign up"
+        description="Join PULSE today. Create an account to follow your interests and join the conversation."
+        path="/register"
+      />
       {/* Brand panel */}
       <div
         aria-hidden="true"
@@ -401,7 +407,7 @@ export default function RegisterPage() {
                 background:
                   isSubmitting || handleStatus === 'taken'
                     ? 'var(--color-border)'
-                    : 'var(--color-accent)',
+                    : 'var(--color-accent-strong)',
                 color:
                   isSubmitting || handleStatus === 'taken'
                     ? 'var(--color-text-muted)'

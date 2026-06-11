@@ -104,7 +104,7 @@ export function ConfirmDialog({
             style={{
               padding: '0.5rem 1.25rem',
               borderRadius: 'var(--radius-full)',
-              background: danger ? 'var(--color-danger)' : 'var(--color-accent)',
+              background: danger ? 'var(--color-danger)' : 'var(--color-accent-strong)',
               color: danger ? '#fff' : 'var(--color-accent-contrast)',
               fontFamily: 'var(--font-body)',
               fontSize: 'var(--text-sm)',

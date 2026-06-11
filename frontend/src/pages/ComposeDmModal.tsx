@@ -361,7 +361,7 @@ export default function ComposeDmModal() {
               borderRadius: 'var(--radius-full)',
               background:
                 selectedUser && !createConversationMutation.isPending
-                  ? 'var(--color-accent)'
+                  ? 'var(--color-accent-strong)'
                   : 'var(--color-surface-raised)',
               color:
                 selectedUser && !createConversationMutation.isPending

@@ -54,3 +54,11 @@ tests/e2e/tour/.auth/
 playwright-report/
 test-results/
 tests/node_modules
+
+# Lighthouse CI run artifacts
+.lighthouseci/
+.lighthouse-urls.json
+
+# Local verification artifacts
+.playwright-mcp/
+a11y-*.png

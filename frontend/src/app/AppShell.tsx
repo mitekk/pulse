@@ -142,7 +142,7 @@ function ComposeButton({ compact }: { compact?: boolean }) {
           width: '44px',
           height: '44px',
           borderRadius: 'var(--radius-full)',
-          background: 'var(--color-accent)',
+          background: 'var(--color-accent-strong)',
           color: 'var(--color-accent-contrast)',
           display: 'flex',
           alignItems: 'center',
@@ -166,7 +166,7 @@ function ComposeButton({ compact }: { compact?: boolean }) {
         width: '100%',
         padding: '0.75rem 1rem',
         borderRadius: 'var(--radius-full)',
-        background: 'var(--color-accent)',
+        background: 'var(--color-accent-strong)',
         color: 'var(--color-accent-contrast)',
         fontFamily: 'var(--font-body)',
         fontWeight: 'var(--font-weight-semibold)',
@@ -338,7 +338,7 @@ function NavRail({ compact }: { compact: boolean }) {
                         minWidth: '16px',
                         height: '16px',
                         borderRadius: 'var(--radius-full)',
-                        background: 'var(--color-accent)',
+                        background: 'var(--color-accent-strong)',
                         color: 'var(--color-accent-contrast)',
                         fontSize: '10px',
                         fontWeight: 700,
@@ -659,7 +659,7 @@ function MobileTopBar() {
             width: '36px',
             height: '36px',
             borderRadius: 'var(--radius-full)',
-            background: 'var(--color-accent)',
+            background: 'var(--color-accent-strong)',
             color: 'var(--color-accent-contrast)',
             display: 'flex',
             alignItems: 'center',
@@ -827,6 +827,9 @@ export function AppShell() {
 
   return (
     <>
+      <a href="#main-content" className="skip-to-content" data-testid="skip-to-content">
+        Skip to content
+      </a>
       {/* Desktop & tablet layout */}
       <div
         style={{
@@ -882,6 +885,7 @@ export function AppShell() {
 
         {/* Center feed */}
         <main
+          id="main-content"
           className="shell-center"
           style={{
             flex: 1,

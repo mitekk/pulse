@@ -130,7 +130,7 @@ function FollowRequestActions({ notificationId, requesterId, requesterHandle }: 
         style={{
           padding: '0.375rem 1rem',
           borderRadius: 'var(--radius-full)',
-          background: 'var(--color-accent)',
+          background: 'var(--color-accent-strong)',
           color: 'var(--color-accent-contrast)',
           fontFamily: 'var(--font-body)',
           fontWeight: 'var(--font-weight-semibold)',

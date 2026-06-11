@@ -145,7 +145,7 @@ export default function VerifyEmailPage() {
               style={{
                 padding: '0.75rem 2rem',
                 borderRadius: 'var(--radius-md)',
-                background: 'var(--color-accent)',
+                background: 'var(--color-accent-strong)',
                 color: 'var(--color-accent-contrast)',
                 fontWeight: 'var(--font-weight-semibold)',
                 fontSize: 'var(--text-base)',

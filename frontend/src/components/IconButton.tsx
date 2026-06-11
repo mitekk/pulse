@@ -38,7 +38,7 @@ const VARIANT_STYLES: Record<IconButtonVariant, React.CSSProperties> = {
     border: '1px solid var(--color-border)',
   },
   accent: {
-    background: 'var(--color-accent)',
+    background: 'var(--color-accent-strong)',
     color: 'var(--color-accent-contrast)',
     border: 'none',
   },

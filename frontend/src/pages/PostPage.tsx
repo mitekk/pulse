@@ -38,7 +38,22 @@ import {
   useUnbookmark,
 } from '@/features/engagement/useEngagement'
 import { useAuthStore, selectUser } from '@/lib/auth/store'
+import { Seo } from '@/components/Seo'
+import { truncate } from '@/lib/seo'
 import type { PostDto } from '@/types/api'
+
+// ── Build SEO metadata from a post ────────────────────────
+
+function postSeoImage(post: PostDto): string | null {
+  const ready = post.media.find((m) => m.status === 'ready')
+  return ready?.variants.large ?? ready?.variants.medium ?? ready?.variants.poster ?? post.author.avatarUrl
+}
+
+function postSeoDescription(post: PostDto): string {
+  if (post.text) return truncate(post.text)
+  if (post.media.length > 0) return `${post.author.displayName} shared ${post.media.length} media item(s) on PULSE.`
+  return `A post by ${post.author.displayName} (@${post.author.handle}) on PULSE.`
+}
 
 // ── Helper: format full date ──────────────────────────────
 
@@ -428,8 +443,18 @@ export default function PostPage() {
   const initialReplyIds = new Set(initialReplies.map((r) => r.id))
   const additionalReplies = repliesQuery.items.filter((r) => !initialReplyIds.has(r.id))
 
+  const seoImage = postSeoImage(post)
+
   return (
     <div data-testid="thread-view">
+      <Seo
+        title={`${post.author.displayName} on PULSE`}
+        description={postSeoDescription(post)}
+        path={`/@${post.author.handle}/status/${post.id}`}
+        image={seoImage}
+        type="article"
+        card={seoImage && post.media.some((m) => m.status === 'ready') ? 'summary_large_image' : 'summary'}
+      />
       {/* Back nav */}
       <header
         style={{

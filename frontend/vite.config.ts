@@ -31,6 +31,24 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // No production sourcemaps: smaller deploy and no source exposure. Re-enable
+    // locally with `vite build --sourcemap` when debugging a prod bundle.
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        // Split heavy, rarely-changing dependencies into long-cacheable vendor
+        // chunks so app code updates don't bust the framework cache.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id))
+            return 'react-vendor'
+          if (id.includes('@tanstack')) return 'query-vendor'
+          if (id.includes('socket.io') || id.includes('engine.io')) return 'realtime-vendor'
+          if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('zod'))
+            return 'form-vendor'
+          return undefined
+        },
+      },
+    },
   },
 })

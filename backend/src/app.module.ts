@@ -19,6 +19,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { SearchModule } from './modules/search/search.module';
 import { HashtagsModule } from './modules/hashtags/hashtags.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { SeoModule } from './modules/seo/seo.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { NOTIFICATION_PORT } from './modules/users/notification.port';
@@ -56,6 +57,7 @@ import { ViewerFlagsAdapter } from './modules/engagement/viewer-flags.adapter';
     HashtagsModule,
     SearchModule,
     ReportsModule,
+    SeoModule,
   ],
   providers: [
     {

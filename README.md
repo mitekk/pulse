@@ -122,10 +122,17 @@ make test-e2e            # boots the stack, runs migrations, runs Playwright, te
 # Per-package, if you prefer:
 npm run test -w backend            # npm run test:coverage -w backend for coverage
 npm run test -w frontend
+
+# SEO / quality benchmarks (Lighthouse + bundle-size)
+npm run -w frontend size           # bundle-size budget (size-limit)
+node scripts/seed-lighthouse.mjs   # seed a public profile + post (stack must be up)
+npx lhci autorun                   # Lighthouse: SEO / a11y / best-practices / perf
 ```
 
 Coverage is gated at **80% lines** in CI. The pipeline runs the layers in order —
-`lint → unit → integration → e2e → build` (see [.github/workflows/ci.yml](.github/workflows/ci.yml)).
+`lint → unit → integration → e2e → build`, plus a **bundle-size** budget and a
+**Lighthouse** gate (SEO 100, a11y/best-practices ≥ 90, performance reported) — see
+[.github/workflows/ci.yml](.github/workflows/ci.yml) and [ADR-0011](docs/adr/0011-seo-benchmark-gates.md).
 
 ## 🗄️ Migrations
 
@@ -150,6 +157,7 @@ The load-bearing engineering decisions are recorded as ADRs (see the [decision l
 - **Secure sessions** — a short-lived access JWT (in memory) plus a **rotating** refresh token in an httpOnly/Secure/SameSite cookie, with a Redis denylist enforced in the auth guard so logout revokes immediately. → [ADR-0003](docs/adr/0003-auth-strategy.md), [ADR-0009](docs/adr/0009-session-revocation-denylist.md)
 - **Media pipeline** — presigned direct-to-storage uploads (MinIO/S3), async processing into variants, then attachment to posts.
 - **Search without extra infrastructure** — PostgreSQL full-text search + `pg_trgm` fuzzy matching behind a `SearchPort`, swappable for a dedicated engine later. → [ADR-0005](docs/adr/0005-search-approach.md)
+- **SEO without an SSR rewrite** — public profiles/posts are crawlable; nginx routes social scrapers (which don't run JS) to a backend **dynamic-rendering** layer that emits Open Graph / Twitter Card / JSON-LD, plus a DB-backed `sitemap.xml` and host-aware `robots.txt`. Per-route metadata for the human/Googlebot path uses **React 19 native metadata** (no extra dependency). → [ADR-0010](docs/adr/0010-seo-crawlability-and-dynamic-rendering.md)
 
 ## 📂 Project structure
 

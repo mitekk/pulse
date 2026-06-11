@@ -23,7 +23,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANT_STYLES: Record<ButtonVariant, React.CSSProperties> = {
   primary: {
-    background: 'var(--color-accent)',
+    background: 'var(--color-accent-strong)',
     color: 'var(--color-accent-contrast)',
     border: 'none',
   },
@@ -145,7 +145,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
           pointer-events: none;
         }
         .pulse-btn:not(:disabled):hover.variant-primary {
-          background: var(--color-accent-hover);
+          background: var(--color-accent-strong-hover);
         }
         .pulse-btn:not(:disabled):hover.variant-secondary {
           background: var(--color-surface-raised);

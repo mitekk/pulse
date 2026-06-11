@@ -63,7 +63,7 @@ export function MessageBubble({
     background: isMine
       ? isFailed
         ? 'color-mix(in srgb, var(--color-danger) 20%, var(--color-surface-raised))'
-        : 'var(--color-accent)'
+        : 'var(--color-accent-strong)'
       : 'var(--color-surface-raised)',
     color: isMine ? 'var(--color-accent-contrast)' : 'var(--color-text)',
     border: isFailed ? '1px solid var(--color-danger)' : 'none',

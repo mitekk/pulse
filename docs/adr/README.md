@@ -13,3 +13,5 @@ One file per significant decision (MADR format). Produced by the `adr` agent dur
 | [ADR-0007](0007-nestjs-dev-compiler.md) | NestJS Dev-Container Compiler — nest start --watch Instead of tsx watch | Accepted | Smoke-test retrospective, lead architect | 2026-06-08 |
 | [ADR-0008](0008-redis-eviction-policy.md) | Redis Eviction Policy — noeviction Instead of allkeys-lru | Accepted | Smoke-test retrospective, lead architect | 2026-06-08 |
 | [ADR-0009](0009-session-revocation-denylist.md) | Session Revocation on Logout — Redis Denylist Checked in AuthGuard | Accepted | Smoke-test retrospective, lead architect | 2026-06-08 |
+| [ADR-0010](0010-seo-crawlability-and-dynamic-rendering.md) | SEO Crawlability — Public Read Mode + Bot Dynamic Rendering, React 19 Native Metadata | Accepted | SEO initiative, lead architect, human gate | 2026-06-11 |
+| [ADR-0011](0011-seo-benchmark-gates.md) | SEO Benchmark Gates — Lighthouse CI + Bundle-Size Budget | Accepted | SEO initiative, lead architect, human gate | 2026-06-11 |

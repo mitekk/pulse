@@ -198,7 +198,7 @@ function MediaItem({
     >
       <img
         src={displaySrc}
-        alt={altText}
+        alt={altText || `Image ${index + 1} of ${total} shared by @${authorHandle}`}
         loading="lazy"
         onError={() => setLoadFailed(true)}
         width={item.width ?? undefined}
